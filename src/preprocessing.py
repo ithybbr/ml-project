@@ -15,7 +15,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 TARGET_COLUMN = "Y"
-DROP_COLUMNS = ["X2", "X3", "X4", "X5", "X7", "X8", "X9", "X10", "X11", "X12", "X13", "X14", "X15", "X16", "X17", "X19", "X20", "X21", "X22", "X23"]
+DROP_COLUMNS = ["X1", "X2", "X3", "X4", "X5"]
 
 
 @dataclass
@@ -177,7 +177,7 @@ def save_processed_data(
     y_test: pd.Series,
     preprocessor: ColumnTransformer,
     output_dir: str | Path = BASE_DIR / "data" / "processed",
-    pipeline_path: str | Path = BASE_DIR / "models"/ "preprocessor.pkl",
+    pipeline_path: str | Path = BASE_DIR / "models"/ "behavioral.pkl",
 ) -> None:
     """
     Save processed datasets and fitted preprocessing pipeline.
@@ -196,7 +196,7 @@ def save_processed_data(
     y_val.to_csv(output_dir / "y_val.csv", index=False)
     y_test.to_csv(output_dir / "y_test.csv", index=False)
 
-    joblib.dump(preprocessor, pipeline_path)
+    joblib.dump((X_train, X_val, X_test, y_train, y_val, y_test, preprocessor), pipeline_path)
 
 
 def run_preprocessing(
