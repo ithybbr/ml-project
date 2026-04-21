@@ -32,37 +32,34 @@ class DecisionTreeConfig:
 
 
 def find_repo_root(start_path: Path | None = None) -> Path:
-    """
-    Find the project root by locating data/processed.
-    Works whether this script is run from the repo root, src/, or another subfolder.
-    """
     if start_path is None:
         start_path = Path.cwd()
 
     current = start_path.resolve()
     candidates = [current, *current.parents]
     for candidate in candidates:
-        if (candidate / "data" / "processed").exists():
+        if (candidate / "models" / "behavioral.pkl").exists():
             return candidate
 
     raise FileNotFoundError(
-        "Could not find project root containing data/processed. "
-        "Run this script from inside the repository."
+        "Could not find project root containing models/behavioral.pkl. "
     )
 
 
-def load_processed_data(
+def load_behavioral_data(
     repo_root: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
-    data_dir = repo_root / "data" / "processed"
+    data_path = repo_root / "models" / "behavioral.pkl"
 
-    X_train = pd.read_csv(data_dir / "X_train.csv")
-    X_val = pd.read_csv(data_dir / "X_val.csv")
-    X_test = pd.read_csv(data_dir / "X_test.csv")
+    X_train, X_val, X_test, y_train, y_val, y_test, _preprocessor = joblib.load(data_path)
 
-    y_train = pd.read_csv(data_dir / "y_train.csv").iloc[:, 0]
-    y_val = pd.read_csv(data_dir / "y_val.csv").iloc[:, 0]
-    y_test = pd.read_csv(data_dir / "y_test.csv").iloc[:, 0]
+    X_train = pd.DataFrame(X_train).reset_index(drop=True)
+    X_val = pd.DataFrame(X_val).reset_index(drop=True)
+    X_test = pd.DataFrame(X_test).reset_index(drop=True)
+
+    y_train = pd.Series(y_train).astype(int).reset_index(drop=True)
+    y_val = pd.Series(y_val).astype(int).reset_index(drop=True)
+    y_test = pd.Series(y_test).astype(int).reset_index(drop=True)
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -117,7 +114,7 @@ def train_and_save_from_repo(
     if config is None:
         config = DecisionTreeConfig()
 
-    X_train, X_val, X_test, y_train, y_val, y_test = load_processed_data(repo_root)
+    X_train, X_val, X_test, y_train, y_val, y_test = load_behavioral_data(repo_root)
     model = train_tree(X_train, X_val, y_train, y_val, config)
     metrics = evaluate_model(model, X_test, y_test)
 
@@ -193,6 +190,7 @@ def main() -> None:
 
     print("Saved model to:", saved_path)
     print(f"Evaluation threshold: {model.threshold}")
+    print(f"Number of features: {model.estimator.n_features_in_}")
     pretty_print_metrics(metrics)
 
 
