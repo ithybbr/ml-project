@@ -323,7 +323,7 @@ def train_xgboost(X_train, y_train, X_val, y_val):
         eval_set=[(X_val, y_val)],
         verbose=False
     )
-
+    
     return model
 
 
@@ -346,7 +346,10 @@ def main():
     print("\nColumns:", feature_cols)
 
     xgb_model = train_xgboost(X_train, y_train, X_val, y_val)
-
+    
+    joblib.dump(xgb_model, "xgboost_44features.pkl")
+    print(f"Model saved to {'xgboost_44features.pkl'}")
+    
     val_results_xgb, val_proba_xgb, val_pred_xgb = evaluate_model(
         "XGBoost (engineered features)", xgb_model, X_val, y_val, threshold=0.5
     )
