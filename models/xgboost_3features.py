@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+import joblib
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -209,7 +210,8 @@ xgb_model.fit(
     eval_set=[(X_val, y_val)],
     verbose=False
 )
-
+joblib.dump(xgb_model, "xgboost_3features.pkl")
+print(f"Model saved to {'xgboost_3features.pkl'}")
 val_results_xgb, val_proba_xgb, val_pred_xgb = evaluate_model(
     "XGBoost", xgb_model, X_val, y_val, threshold=0.5
 )
