@@ -38,8 +38,8 @@ warnings.filterwarnings("ignore")
 # PATHS
 # ============================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
-RAW_FILE = BASE_DIR / "data" / "raw" / "data.xls"
-SAVE_DIR = BASE_DIR / "saved_models"
+BEH_PKL = BASE_DIR / "models" / "behavioral.pkl"
+SAVE_DIR = BASE_DIR / "models"
 SAVE_DIR.mkdir(exist_ok=True)
 
 
@@ -47,80 +47,8 @@ SAVE_DIR.mkdir(exist_ok=True)
 # 1. LOAD RAW DATA
 # ============================================================
 def load_raw_data(file_path: Path) -> pd.DataFrame:
-    # For .xls you may need: pip install xlrd
-    df = pd.read_excel(file_path)
-
-    # In this dataset, the first row often contains the real column names
-    first_row = df.iloc[0].astype(str).tolist()
-    if "LIMIT_BAL" in first_row or "default payment next month" in first_row:
-        df.columns = first_row
-        df = df.iloc[1:].copy()
-
-    if "default payment next month" in df.columns:
-        df = df.rename(columns={"default payment next month": "DEFAULT"})
-
-    if df.columns[0] != "ID":
-        df = df.rename(columns={df.columns[0]: "ID"})
-
-    # convert numeric
-    for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df = df.dropna(subset=["DEFAULT"]).copy()
-    df["DEFAULT"] = df["DEFAULT"].astype(int)
-
+    df = joblib.load(file_path)
     return df
-
-
-
-
-# ============================================================
-# 3. CHOOSE FEATURE SET
-# ============================================================
-def get_feature_columns():
-    # raw behavioral
-    raw_behavioral = [
-        "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
-        "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
-        "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6"
-    ]
-
-
-    # final chosen set
-    feature_cols = raw_behavioral
-    return feature_cols
-
-
-# ============================================================
-# 4. TRAIN / VAL / TEST SPLIT
-# ============================================================
-def make_splits(df: pd.DataFrame, feature_cols: list):
-    X = df[feature_cols].copy()
-    y = df["DEFAULT"].astype(int).copy()
-
-    # 70% train, 30% temp
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y,
-        test_size=0.30,
-        stratify=y,
-        random_state=42
-    )
-
-    # 15% val, 15% test
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp,
-        test_size=0.50,
-        stratify=y_temp,
-        random_state=42
-    )
-    BASE_DIR = Path().resolve().parent
-    output_dir = BASE_DIR / "data" / "processed"
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)  
-    pkl = (X_train, X_val, X_test, y_train, y_val, y_test)
-    joblib.dump(pkl, output_dir / "44features.pkl")
-    return X_train, X_val, X_test, y_train, y_val, y_test
-
 
 # ============================================================
 # 5. EVALUATION HELPERS
@@ -250,23 +178,19 @@ def train_xgboost(X_train, y_train, X_val, y_val):
 # 7. MAIN
 # ============================================================
 def main():
-    df_raw = load_raw_data(RAW_FILE)
-    feature_cols = get_feature_columns()
-
-    X_train, X_val, X_test, y_train, y_val, y_test = make_splits(df_raw, feature_cols)
-
+    X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = load_raw_data(BEH_PKL)
+    y_train = y_train.astype(int)
+    y_val = y_val.astype(int)
+    y_test = y_test.astype(int)
     print("Default rate:")
     print("Train:", y_train.mean())
     print("Val:  ", y_val.mean())
     print("Test: ", y_test.mean())
 
-    print("\nNumber of features:", len(feature_cols))
-    print("\nColumns:", feature_cols)
-
     xgb_model = train_xgboost(X_train, y_train, X_val, y_val)
     
-    joblib.dump(xgb_model, "xgboost_18features.pkl")
-    print(f"Model saved to {'xgboost_18features.pkl'}")
+    joblib.dump(xgb_model, SAVE_DIR / "xgboost_18features.pkl")
+    print(f"Model saved to {SAVE_DIR / 'xgboost_18features.pkl'}")
     val_results_xgb, val_proba_xgb, val_pred_xgb = evaluate_model(
         "XGBoost (engineered features)", xgb_model, X_val, y_val, threshold=0.5
     )
