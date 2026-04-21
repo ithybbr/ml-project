@@ -5,11 +5,13 @@ from sklearn.metrics import roc_auc_score, average_precision_score, log_loss, br
 # ---------------------------------------------------------
 # 1. LOAD THE DATA FROM .PKL
 # ---------------------------------------------------------
-print("Loading data from 44features.pkl...")
+print("Loading data from 18features.pkl...")
 
-# Note: We use "models/44features.pkl" assuming you are running this 
-# script from your main ML-PROJECT folder.
-X_train, X_val, X_test, y_train, y_val, y_test = joblib.load("models/44features.pkl")
+X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = joblib.load("models/18features.pkl")
+
+y_train = y_train.astype(int)
+y_val = y_val.astype(int)
+y_test = y_test.astype(int)
 
 # ---------------------------------------------------------
 # 2. INITIALIZE AND TRAIN THE RANDOM FOREST
@@ -50,7 +52,7 @@ print("--------------------------\n")
 # 4. SAVE THE TRAINED MODEL
 # ---------------------------------------------------------
 # Save the trained model so it can be used later without retraining
-model_path = 'models/random_forest_44features.pkl'
+model_path = 'models/random_forest_18features.pkl'
 joblib.dump(rf_model, model_path)
 
 print(f"Success! Model saved to {model_path}")
