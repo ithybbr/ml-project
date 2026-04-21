@@ -8,6 +8,7 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import FixedThresholdClassifier
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -17,7 +18,7 @@ from sklearn.metrics import (
 from sklearn.tree import DecisionTreeClassifier
 
 
-DEFAULT_THRESHOLD = 0.35
+DEFAULT_THRESHOLD = 0.5
 DEFAULT_RANDOM_STATE = 42
 
 
@@ -28,38 +29,6 @@ class DecisionTreeConfig:
     class_weight: str | dict[str, float] | None = "balanced"
     threshold: float = DEFAULT_THRESHOLD
     random_state: int = DEFAULT_RANDOM_STATE
-
-
-class ThresholdedDecisionTreeModel:
-    """
-    Wrapper around a trained DecisionTreeClassifier.
-
-    Why this wrapper exists:
-    - The raw sklearn model's `.predict()` uses the default 0.5 threshold.
-    - Your tuned project version uses a custom threshold (for example 0.35).
-    - Saving this wrapper means `joblib.load(...).predict(X)` will use your tuned threshold.
-    """
-
-    def __init__(self, model: DecisionTreeClassifier, threshold: float = DEFAULT_THRESHOLD):
-        self.model = model
-        self.threshold = float(threshold)
-
-    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
-        probabilities = self.predict_proba(X)[:, 1]
-        return (probabilities >= self.threshold).astype(int)
-
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
-        return self.model.predict_proba(X)
-
-    def score(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> float:
-        predictions = self.predict(X)
-        return accuracy_score(y, predictions)
-
-    def get_params(self, deep: bool = True) -> dict[str, Any]:
-        return {
-            "threshold": self.threshold,
-            "model_params": self.model.get_params(deep=deep),
-        }
 
 
 def find_repo_root(start_path: Path | None = None) -> Path:
@@ -82,7 +51,9 @@ def find_repo_root(start_path: Path | None = None) -> Path:
     )
 
 
-def load_processed_data(repo_root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+def load_processed_data(
+    repo_root: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     data_dir = repo_root / "data" / "processed"
 
     X_train = pd.read_csv(data_dir / "X_train.csv")
@@ -96,41 +67,29 @@ def load_processed_data(repo_root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def train_base_tree(
-    X_train_full: pd.DataFrame,
-    y_train_full: pd.Series,
-    config: DecisionTreeConfig,
-) -> DecisionTreeClassifier:
-    model = DecisionTreeClassifier(
-        random_state=config.random_state,
-        max_depth=config.max_depth,
-        min_samples_leaf=config.min_samples_leaf,
-        class_weight=config.class_weight,
-    )
-    model.fit(X_train_full, y_train_full)
-    return model
-
-
-def train_thresholded_tree(
+def train_tree(
     X_train: pd.DataFrame,
     X_val: pd.DataFrame,
     y_train: pd.Series,
     y_val: pd.Series,
     config: DecisionTreeConfig,
-) -> ThresholdedDecisionTreeModel:
+) -> FixedThresholdClassifier:
     X_train_full = pd.concat([X_train, X_val], axis=0).reset_index(drop=True)
     y_train_full = pd.concat([y_train, y_val], axis=0).reset_index(drop=True)
 
-    base_model = train_base_tree(X_train_full, y_train_full, config)
-    wrapped_model = ThresholdedDecisionTreeModel(
-        model=base_model,
-        threshold=config.threshold,
+    base_model = DecisionTreeClassifier(
+        random_state=config.random_state,
+        max_depth=config.max_depth,
+        min_samples_leaf=config.min_samples_leaf,
+        class_weight=config.class_weight,
     )
-    return wrapped_model
+    base_model.fit(X_train_full, y_train_full)
+
+    return FixedThresholdClassifier(estimator=base_model, threshold=config.threshold)
 
 
 def evaluate_model(
-    model: ThresholdedDecisionTreeModel,
+    model: FixedThresholdClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> dict[str, Any]:
@@ -145,7 +104,7 @@ def evaluate_model(
     }
 
 
-def save_model(model: ThresholdedDecisionTreeModel, output_path: Path) -> None:
+def save_model(model: FixedThresholdClassifier, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, output_path)
 
@@ -154,12 +113,12 @@ def train_and_save_from_repo(
     repo_root: Path,
     output_path: Path | None = None,
     config: DecisionTreeConfig | None = None,
-) -> tuple[ThresholdedDecisionTreeModel, dict[str, Any], Path]:
+) -> tuple[FixedThresholdClassifier, dict[str, Any], Path]:
     if config is None:
         config = DecisionTreeConfig()
 
     X_train, X_val, X_test, y_train, y_val, y_test = load_processed_data(repo_root)
-    model = train_thresholded_tree(X_train, X_val, y_train, y_val, config)
+    model = train_tree(X_train, X_val, y_train, y_val, config)
     metrics = evaluate_model(model, X_test, y_test)
 
     if output_path is None:
@@ -179,7 +138,7 @@ def pretty_print_metrics(metrics: dict[str, Any]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train a thresholded Decision Tree model and save it as a .pkl file."
+        description="Train a Decision Tree model and save it as a .pkl file."
     )
     parser.add_argument(
         "--repo-root",
@@ -209,7 +168,7 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=DEFAULT_THRESHOLD,
-        help="Custom classification threshold for the wrapper model.",
+        help="Classification threshold applied during evaluation.",
     )
     return parser.parse_args()
 
@@ -218,7 +177,7 @@ def main() -> None:
     args = parse_args()
 
     repo_root = Path(args.repo_root).resolve() if args.repo_root else find_repo_root()
-    output_path = Path(args.output).resolve() if args.output else repo_root / "models" / "decision_tree.pkl"
+    output_path = Path(args.output).resolve() if args.output else repo_root / "models" / "decision_tree_model.pkl"
 
     config = DecisionTreeConfig(
         max_depth=args.max_depth,
@@ -233,7 +192,7 @@ def main() -> None:
     )
 
     print("Saved model to:", saved_path)
-    print("Stored threshold:", model.threshold)
+    print(f"Evaluation threshold: {model.threshold}")
     pretty_print_metrics(metrics)
 
 
