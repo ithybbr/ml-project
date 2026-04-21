@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
+import os 
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -90,52 +91,49 @@ axes[1, 1].grid(True, alpha=0.3)
 
 # FIX: Add specific height (h_pad) and width (w_pad) spacing between the subplots
 plt.tight_layout(h_pad=4.0, w_pad=3.0)
-
 plt.show()
 
 # ---------------------------------------------------------
 # 5. Prediction Function For New Data
 # ---------------------------------------------------------
 def predict_new_client_behavior(model, fitted_scaler, new_behavioral_data):
-    """
-    Takes in raw behavioral data for new clients, scales it, and returns predictions.
-    
-    Parameters:
-    - model: The trained Logistic Regression model
-    - fitted_scaler: The StandardScaler fitted on the training data
-    - new_behavioral_data: A list, numpy array, or 2D array of behavioral features
-                           (Must have exactly 18 features to match the model)
-                           
-    Returns:
-    - predictions (0 or 1)
-    - probabilities (float between 0 and 1 representing default risk)
-    """
     new_data_np = np.array(new_behavioral_data)
     
-    # If a single row/client is passed (1D array), reshape it to 2D matrix
     if new_data_np.ndim == 1:
         new_data_np = new_data_np.reshape(1, -1)
         
-    # Ensure the new data has exactly 18 features
     expected_features = fitted_scaler.n_features_in_
     if new_data_np.shape[1] != expected_features:
         raise ValueError(f"Expected {expected_features} behavioral features, got {new_data_np.shape[1]}")
         
-    # Scale the new data using the EXACT SAME scaler fitted on the training data
     new_data_scaled = fitted_scaler.transform(new_data_np)
-    
-    # Make predictions
     preds = model.predict(new_data_scaled)
     probs = model.predict_proba(new_data_scaled)[:, 1]
     
     return preds, probs
 
-# --- Example of how to use the function ---
 print("\n--- Testing Prediction Function on 'New' Data ---")
-# Let's pretend the first 3 rows of the test set are entirely new clients passing through our system
 fake_new_clients = X_test[:3]
-
 preds, probs = predict_new_client_behavior(lr_clf, scaler, fake_new_clients)
 
 for i in range(len(preds)):
     print(f"Client {i+1} -> Predicted Class: {preds[i]}, Probability of Default: {probs[i]:.2%}")
+
+
+# ---------------------------------------------------------
+# 6. SAVE THE TRAINED MODEL AND SCALER
+# ---------------------------------------------------------
+output_path = "models/logreg_18features.pkl"
+
+artifacts_to_save = {
+    "model": lr_clf,
+    "scaler": scaler
+}
+
+# Ensure the models directory exists just in case
+os.makedirs("models", exist_ok=True)
+
+# Export the pickle file
+joblib.dump(artifacts_to_save, output_path)
+
+print(f"\n[SUCCESS] Model and Scaler successfully saved to: {output_path}")
