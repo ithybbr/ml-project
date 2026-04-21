@@ -18,7 +18,7 @@ from sklearn.metrics import (
 from sklearn.tree import DecisionTreeClassifier
 
 
-DEFAULT_THRESHOLD = 0.5
+DEFAULT_THRESHOLD = 0.6
 DEFAULT_RANDOM_STATE = 42
 
 
