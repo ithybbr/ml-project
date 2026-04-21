@@ -19,7 +19,7 @@ from sklearn.calibration import CalibrationDisplay
 # ---------------------------------------------------------
 # 1. Load the Data (Behavioral Variables Only - 18 Features)
 # ---------------------------------------------------------
-file_path = "models/18features.pkl"       #"18features"
+file_path = "models/3features.pkl"       #"18features"
 print(f"Loading data from {file_path}...")
 
 # Unpacking all 7 items exactly as they are saved in your .pkl file
@@ -36,16 +36,14 @@ print(f"Behavioral features in training set: {X_train.shape[1]}\n")
 # ---------------------------------------------------------
 # 2. Preprocess and Train Logistic Regression
 # ---------------------------------------------------------
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test) 
+
 
 lr_clf = LogisticRegression(max_iter=1000, random_state=42)
-lr_clf.fit(X_train_scaled, y_train)
+lr_clf.fit(X_train, y_train)
 
 # Generate Predictions and Probabilities
-y_pred_lr = lr_clf.predict(X_test_scaled)
-y_proba_lr = lr_clf.predict_proba(X_test_scaled)[:, 1]
+y_pred_lr = lr_clf.predict(X_test)
+y_proba_lr = lr_clf.predict_proba(X_test)[:, 1]
 
 # ---------------------------------------------------------
 # 3. Print Metrics
@@ -94,46 +92,14 @@ plt.tight_layout(h_pad=4.0, w_pad=3.0)
 plt.show()
 
 # ---------------------------------------------------------
-# 5. Prediction Function For New Data
-# ---------------------------------------------------------
-def predict_new_client_behavior(model, fitted_scaler, new_behavioral_data):
-    new_data_np = np.array(new_behavioral_data)
-    
-    if new_data_np.ndim == 1:
-        new_data_np = new_data_np.reshape(1, -1)
-        
-    expected_features = fitted_scaler.n_features_in_
-    if new_data_np.shape[1] != expected_features:
-        raise ValueError(f"Expected {expected_features} behavioral features, got {new_data_np.shape[1]}")
-        
-    new_data_scaled = fitted_scaler.transform(new_data_np)
-    preds = model.predict(new_data_scaled)
-    probs = model.predict_proba(new_data_scaled)[:, 1]
-    
-    return preds, probs
-
-print("\n--- Testing Prediction Function on 'New' Data ---")
-fake_new_clients = X_test[:3]
-preds, probs = predict_new_client_behavior(lr_clf, scaler, fake_new_clients)
-
-for i in range(len(preds)):
-    print(f"Client {i+1} -> Predicted Class: {preds[i]}, Probability of Default: {probs[i]:.2%}")
-
-
-# ---------------------------------------------------------
 # 6. SAVE THE TRAINED MODEL AND SCALER
 # ---------------------------------------------------------
-output_path = "models/logreg_18features.pkl"
-
-artifacts_to_save = {
-    "model": lr_clf,
-    "scaler": scaler
-}
+output_path = "models/logreg_3features.pkl"
 
 # Ensure the models directory exists just in case
 os.makedirs("models", exist_ok=True)
 
 # Export the pickle file
-joblib.dump(artifacts_to_save, output_path)
+joblib.dump(lr_clf, output_path)
 
-print(f"\n[SUCCESS] Model and Scaler successfully saved to: {output_path}")
+print(f"\n[SUCCESS] Model successfully saved to: {output_path}")
