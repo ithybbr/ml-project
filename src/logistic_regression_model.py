@@ -19,7 +19,7 @@ from sklearn.calibration import CalibrationDisplay
 # ---------------------------------------------------------
 # 1. Load the Data (Behavioral Variables Only - 18 Features)
 # ---------------------------------------------------------
-file_path = "models/3features.pkl"       #"18features"
+file_path = "models/18features.pkl"       #"18features"
 print(f"Loading data from {file_path}...")
 
 # Unpacking all 7 items exactly as they are saved in your .pkl file
@@ -49,9 +49,9 @@ y_proba_lr = lr_clf.predict_proba(X_test)[:, 1]
 # 3. Print Metrics
 # ---------------------------------------------------------
 print("=== Logistic Regression (18 Behavioral Variables) ===")
-print(f"Accuracy: {accuracy_score(y_test, y_pred_lr):.4f}")
-print(f"ROC AUC:  {roc_auc_score(y_test, y_proba_lr):.4f}")
-print(f"PR AUC:   {average_precision_score(y_test, y_proba_lr):.4f}")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_lr)}")
+print(f"ROC AUC:  {roc_auc_score(y_test, y_proba_lr)}")
+print(f"PR AUC:   {average_precision_score(y_test, y_proba_lr)}")
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred_lr, zero_division=0))
 
