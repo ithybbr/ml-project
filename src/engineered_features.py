@@ -15,7 +15,7 @@ RAW_FILE = BASE_DIR / "data" / "raw" / "data.xls"
 OUTPUT_DIR = BASE_DIR / "data" / "processed"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_FILE = OUTPUT_DIR / "engineered_features.xlsx"
+OUTPUT_FILE = OUTPUT_DIR / "44features.xls"
 
 
 # ============================================================
