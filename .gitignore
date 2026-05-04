@@ -15,6 +15,6 @@ env/
 # OS files
 .DS_Store
 
-img*/
+imgs*/
 *.png
 *.jpg
