@@ -2,7 +2,7 @@ import streamlit as st
 import joblib
 import pandas as pd
 model = joblib.load("models/xgboost_44features.pkl")
-X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = joblib.load("models/44features.pkl")
+X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = joblib.load("data/processed/44features.pkl")
 st.title("Fintech Credit Scoring System")
 limit_bal = st.number_input("Credit Limit", min_value=0)
 age = st.number_input("Age", min_value=18, max_value=100)
