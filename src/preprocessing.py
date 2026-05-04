@@ -15,7 +15,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 TARGET_COLUMN = "Y"
-DROP_COLUMNS = []
+DROP_COLUMNS = ["X2", "X3", "X4"]
 
 
 @dataclass
@@ -75,7 +75,7 @@ def split_data(
 
 
 def detect_column_types(X: pd.DataFrame) -> tuple[list[str], list[str]]:
-    known_categorical = ["X2", "X3", "X4"]
+    known_categorical = ["X2", "X3", "X4", "X30"]
     categorical_cols = [col for col in known_categorical if col in X.columns]
     numerical_cols = [col for col in X.columns if col not in categorical_cols]
     return categorical_cols, numerical_cols
