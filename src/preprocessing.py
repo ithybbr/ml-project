@@ -15,7 +15,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 TARGET_COLUMN = "Y"
-DROP_COLUMNS = ["X1", "X2", "X3", "X4", "X5"]
+DROP_COLUMNS = []
 
 
 @dataclass
@@ -177,7 +177,7 @@ def save_processed_data(
     y_test: pd.Series,
     preprocessor: ColumnTransformer,
     output_dir: str | Path = BASE_DIR / "data" / "processed",
-    pipeline_path: str | Path = BASE_DIR / "models"/ "behavioral.pkl",
+    pipeline_path: str | Path = BASE_DIR / "models"/ "44features.pkl",
 ) -> None:
     """
     Save processed datasets and fitted preprocessing pipeline.
