@@ -1,5 +1,5 @@
 import joblib
-from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score, average_precision_score, log_loss, brier_score_loss
 
 # ---------------------------------------------------------
@@ -14,28 +14,38 @@ y_val = y_val.astype(int)
 y_test = y_test.astype(int)
 
 # ---------------------------------------------------------
-# 2. INITIALIZE AND TRAIN THE RANDOM FOREST
+# 2. INITIALIZE AND TRAIN LIGHTGBM
 # ---------------------------------------------------------
-print("Training the Random Forest model (this might take a few seconds)...")
+print("Training the LightGBM model (this is fast)...")
 
-# n_estimators=100: builds 100 decision trees
-# n_jobs=-1: uses all CPU cores to train faster
-# random_state=42: ensures you get the exact same results every time
-rf_model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+# With only 3 features we use a smaller num_leaves to avoid overfitting
+# n_estimators=500: number of boosting rounds (trees)
+# learning_rate=0.05: step size shrinkage
+# num_leaves=15: smaller leaf count suits a low-dimensional problem
+# class_weight='balanced': compensates for the imbalanced default rate
+# n_jobs=-1: use all CPU cores
+# random_state=42: ensures reproducibility
+lgbm_model = LGBMClassifier(
+    n_estimators=500,
+    learning_rate=0.05,
+    num_leaves=15,
+    max_depth=-1,
+    subsample=0.8,
+    colsample_bytree=1.0,
+    class_weight='balanced',
+    random_state=42,
+    n_jobs=-1
+)
 
-# Train the model using the training data
-rf_model.fit(X_train, y_train)
+lgbm_model.fit(X_train, y_train)
 
 # ---------------------------------------------------------
 # 3. EVALUATE THE MODEL
 # ---------------------------------------------------------
 print("Evaluating the model on Validation data...")
 
-# Get the predicted probabilities for the validation set.
-# [:, 1] gets the probability that the client WILL default (Class 1)
-y_val_probs = rf_model.predict_proba(X_val)[:, 1]
+y_val_probs = lgbm_model.predict_proba(X_val)[:, 1]
 
-# Calculate the exact metrics
 roc_auc = roc_auc_score(y_val, y_val_probs)
 pr_auc = average_precision_score(y_val, y_val_probs)
 logloss = log_loss(y_val, y_val_probs)
@@ -51,8 +61,7 @@ print("--------------------------\n")
 # ---------------------------------------------------------
 # 4. SAVE THE TRAINED MODEL
 # ---------------------------------------------------------
-# Save the trained model so it can be used later without retraining
-model_path = 'models/random_forest_3features.pkl'
-joblib.dump(rf_model, model_path)
+model_path = 'models/lightgbm_3features.pkl'
+joblib.dump(lgbm_model, model_path)
 
 print(f"Success! Model saved to {model_path}")
