@@ -1,6 +1,5 @@
 import joblib
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import roc_auc_score, average_precision_score, log_loss, brier_score_loss
 
 # ---------------------------------------------------------
 # 1. LOAD THE DATA FROM .PKL
@@ -32,26 +31,7 @@ gb_model = GradientBoostingClassifier(
 gb_model.fit(X_train, y_train)
 
 # ---------------------------------------------------------
-# 3. EVALUATE THE MODEL
-# ---------------------------------------------------------
-print("Evaluating the model on Validation data...")
-
-y_val_probs = gb_model.predict_proba(X_val)[:, 1]
-
-roc_auc = roc_auc_score(y_val, y_val_probs)
-pr_auc = average_precision_score(y_val, y_val_probs)
-logloss = log_loss(y_val, y_val_probs)
-brier = brier_score_loss(y_val, y_val_probs)
-
-print("\n--- Validation Results ---")
-print(f"ROC-AUC:      {roc_auc:.4f}")
-print(f"PR-AUC:       {pr_auc:.4f}")
-print(f"Log Loss:     {logloss:.4f}")
-print(f"Brier Score:  {brier:.4f}")
-print("--------------------------\n")
-
-# ---------------------------------------------------------
-# 4. SAVE THE TRAINED MODEL
+# 3. SAVE THE TRAINED MODEL
 # ---------------------------------------------------------
 model_path = 'models/gradient_boosting_18features.pkl'
 joblib.dump(gb_model, model_path)

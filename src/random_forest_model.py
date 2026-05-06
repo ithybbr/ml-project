@@ -1,6 +1,5 @@
 import joblib
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_auc_score, average_precision_score, log_loss, brier_score_loss
 
 # ---------------------------------------------------------
 # 1. LOAD THE DATA FROM .PKL
@@ -25,28 +24,6 @@ rf_model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
 
 # Train the model using the training data
 rf_model.fit(X_train, y_train)
-
-# ---------------------------------------------------------
-# 3. EVALUATE THE MODEL
-# ---------------------------------------------------------
-print("Evaluating the model on Validation data...")
-
-# Get the predicted probabilities for the validation set.
-# [:, 1] gets the probability that the client WILL default (Class 1)
-y_val_probs = rf_model.predict_proba(X_val)[:, 1]
-
-# Calculate the exact metrics Danial needs for the Evaluation section
-roc_auc = roc_auc_score(y_val, y_val_probs)
-pr_auc = average_precision_score(y_val, y_val_probs)
-logloss = log_loss(y_val, y_val_probs)
-brier = brier_score_loss(y_val, y_val_probs)
-
-print("\n--- Validation Results ---")
-print(f"ROC-AUC:      {roc_auc:.4f}")
-print(f"PR-AUC:       {pr_auc:.4f}")
-print(f"Log Loss:     {logloss:.4f}")
-print(f"Brier Score:  {brier:.4f}")
-print("--------------------------\n")
 
 # ---------------------------------------------------------
 # 4. SAVE THE TRAINED MODEL
