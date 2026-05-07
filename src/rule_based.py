@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold, ParameterGrid
+from sklearn.model_selection import StratifiedKFold, ParameterSampler
 from sklearn.metrics import accuracy_score
 import joblib
 from collections import Counter
 
 # ==========================================
-# 1. Model Definition
+# 1. Vectorized Model Definition
 # ==========================================
 class RuleBasedModel:
     def __init__(self, pred_thresh=3, x6_t=0.5, x1_t=1.0, x18_t=0.7, x6_w=2, x1_w=1, x18_w=1):
@@ -24,44 +24,38 @@ class RuleBasedModel:
         self.x18_w = x18_w
 
     def predict_score(self, X):
-        return X.apply(self._score_row, axis=1)
+        # VECTORIZED SCORING: Evaluates all rows simultaneously in memory
+        # This replaces the slow X.apply(axis=1) method
+        score = np.zeros(len(X))
+        
+        # Add weights based on boolean masks
+        score += (X["X6"] > self.x6_t).astype(int) * self.x6_w
+        score += (X["X1"] < self.x1_t).astype(int) * self.x1_w
+        score += (X["X18"] < self.x18_t).astype(int) * self.x18_w
+        
+        return score
 
     def predict(self, X):
         scores = self.predict_score(X)
         return (scores >= self.pred_thresh).astype(int)
-
-    def _score_row(self, row):
-        score = 0
-        if row["X6"] > self.x6_t:
-            score += self.x6_w
-        if row["X1"] < self.x1_t:
-            score += self.x1_w
-        if row["X18"] < self.x18_t:
-            score += self.x18_w
-        return score
         
     def pickle(self, path="../models/rule_based_model.pkl"):
         joblib.dump(self, path)
 
 
 # ==========================================
-# 2. Nested CV Implementation
+# 2. Optimized Nested CV Implementation
 # ==========================================
-def nested_cv_rule_based(X, y, param_grid, outer_splits=5, inner_splits=3, metric=accuracy_score):
+def nested_cv_rule_based(X, y, param_grid, n_iter=100, outer_splits=5, inner_splits=3, metric=accuracy_score):
     """
-    Implements nested cross-validation for the RuleBasedModel.
-    Outer loop: Evaluates the model's generalized performance.
-    Inner loop: Tunes the entire parameter grid (thresholds and weights).
+    Implements nested cross-validation using Randomized Search.
+    n_iter: Number of random parameter combinations to test per fold.
     """
     outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=42)
     inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=42)
 
     outer_scores = []
     best_params_list = []
-
-    # Convert the dictionary grid into an iterable list of all parameter combinations
-    grid = list(ParameterGrid(param_grid))
-    print(f"Total hyperparameter combinations to search per fold: {len(grid)}")
 
     for fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y), 1):
         X_train_outer, X_test_outer = X.iloc[train_idx], X.iloc[test_idx]
@@ -70,15 +64,20 @@ def nested_cv_rule_based(X, y, param_grid, outer_splits=5, inner_splits=3, metri
         best_params = None
         best_inner_score = -1.0
 
-        # Inner Loop: Find the best parameter combination for this fold
-        for params in grid:
+        # Create a random sample of the parameter grid for this fold
+        sampled_params = list(ParameterSampler(param_grid, n_iter=n_iter, random_state=fold))
+        
+        if fold == 1:
+             print(f"Testing {len(sampled_params)} random combinations per outer fold...")
+
+        # Inner Loop: Find the best parameter combination in the random sample
+        for params in sampled_params:
             inner_scores = []
             
             for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
                 X_val_inner = X_train_outer.iloc[inner_val_idx]
                 y_val_inner = y_train_outer.iloc[inner_val_idx]
 
-                # Initialize model with the current dictionary of parameters unpacked
                 model = RuleBasedModel(**params)
                 
                 y_pred_inner = model.predict(X_val_inner)
@@ -127,37 +126,41 @@ if __name__ == "__main__":
     y_cv = pd.concat([y_train, y_val], axis=0).reset_index(drop=True)
 
     # ---------------------------------------------------------
-    # Define the Search Space (The Parameter Grid)
-    # Be mindful of the combinatorial explosion. 
-    # Testing too many values will slow down the nested CV.
+    # Expanded Search Space (The Parameter Grid)
+    # Using np.linspace or np.arange provides more granular options
+    # since RandomizedSearchCV will randomly sample from these.
     # ---------------------------------------------------------
     param_grid = {
-        "pred_thresh": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        "x6_t": [-0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1 ,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        "x1_t": [-0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1 ,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        "x18_t": [-0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1 ,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        "x6_w": [ -5, -4, -3, -2, -1, 1, 2, 3, 4, 5],
-        "x1_w": [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5],
-        "x18_w": [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+        "pred_thresh": [1, 2, 3, 4, 5],
+        "x6_t": np.linspace(-1, 1, 100),
+        "x1_t": np.linspace(-1.5, 1, 100),
+        "x18_t": np.linspace(-0.5, 2, 100),
+        "x6_w": [1, 2, 3, 4, 5, 6, 7],       
+        "x1_w": [1, 2, 3, 4, 5, 6, 7],       
+        "x18_w": [1, 2, 3, 4, 5, 6, 7]       
     }
 
-    print("\nStarting Nested CV...")
+    print("\nStarting Optimized Nested CV...")
+    
+    # n_iter determines how many random combinations are tested. 
     cv_scores, best_params_list = nested_cv_rule_based(
         X=X_cv, 
         y=y_cv, 
         param_grid=param_grid, 
+        n_iter=300,           # <-- Controls the speed/thoroughness tradeoff
         outer_splits=5, 
         inner_splits=3,
         metric=accuracy_score 
     )
 
-    # Find the most frequently selected dictionary of parameters across folds
-    # We convert dicts to sorted tuples so they can be counted by collections.Counter
+    # Find the most frequently selected parameters across folds
     param_tuples = [tuple(sorted(p.items())) for p in best_params_list]
     most_common_tuple = Counter(param_tuples).most_common(1)[0][0]
     final_best_params = dict(most_common_tuple)
     
-    print(f"\nMost frequently selected parameters across folds:\n{final_best_params}")
+    # Format the floats for cleaner console output
+    formatted_params = {k: round(v, 3) if isinstance(v, float) else v for k, v in final_best_params.items()}
+    print(f"\nMost frequently selected parameters across folds:\n{formatted_params}")
 
     print(f"\nApplying final parameters to unseen holdout X_test...")
     final_model = RuleBasedModel(**final_best_params)
