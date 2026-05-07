@@ -6,8 +6,10 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
+from skopt import BayesSearchCV
+from skopt.space import Integer, Categorical
 
 warnings.filterwarnings("ignore")
 
@@ -15,13 +17,16 @@ warnings.filterwarnings("ignore")
 RANDOM_STATE = 42
 SCORING_METRIC = "average_precision"
 
-# Hyperparameter grid for Nested CV
-DEFAULT_PARAM_GRID = {
-    "n_estimators": [100, 200, 300],
-    "max_depth": [None, 10, 20],
-    "min_samples_split": [2, 10],
-    "min_samples_leaf": [2, 5],
-    "max_features": ["sqrt", "log2"] # Controls how many features are randomly considered at each split
+# --- Bayesian Search Space ---
+DEFAULT_PARAM_SPACE = {
+    # Integers search between a minimum and maximum boundary
+    "n_estimators": Integer(100, 500),
+    "max_depth": Integer(5, 50),  # 50 acts as an effective substitute for 'None'
+    "min_samples_split": Integer(2, 20),
+    "min_samples_leaf": Integer(1, 10),
+    
+    # Categorical works identically to standard lists
+    "max_features": Categorical(["sqrt", "log2"])
 }
 
 
@@ -53,26 +58,29 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
     base_model = RandomForestClassifier(
         class_weight="balanced_subsample", # Recalculates weights for each bootstrap sample
         random_state=RANDOM_STATE,
-        n_jobs=1 # Leave thread management to GridSearchCV to prevent thread collision
+        n_jobs=1 # Leave thread management to BayesSearchCV to prevent thread collision
     )
 
     # Configure inner and outer cross-validation strategies
     inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=RANDOM_STATE)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 
-    grid_search = GridSearchCV(
+    # --- Bayesian Search Initialization ---
+    bayes_search = BayesSearchCV(
         estimator=base_model,
-        param_grid=DEFAULT_PARAM_GRID,
+        search_spaces=DEFAULT_PARAM_SPACE,
+        n_iter=30,          # The crucial parameter: exactly 30 search attempts
         scoring=SCORING_METRIC,
         cv=inner_cv,
-        n_jobs=-1,  # Parallelize across folds and parameter combinations
-        refit=True, # Ensures the final model is trained on the full dataset passed to fit()
+        n_jobs=-1,          # Parallelize across folds
+        refit=True,         # Ensures the final model is trained on the full dataset
+        random_state=RANDOM_STATE
     )
 
     # 1. Nested Cross-Validation (Evaluation Step)
     print("Running nested cross-validation...")
     nested_cv_scores = cross_val_score(
-        grid_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
+        bayes_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
     )
     
     mean_score = np.mean(nested_cv_scores)
@@ -81,10 +89,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
 
     # 2. Final Model Training (Fit Step)
     print("Tuning hyperparameters and fitting the final model...")
-    grid_search.fit(X, y)
+    bayes_search.fit(X, y)
     
-    print(f"Best hyperparameters found: {grid_search.best_params_}")
-    return grid_search.best_estimator_
+    print(f"Best hyperparameters found: {bayes_search.best_params_}")
+    return bayes_search.best_estimator_
 
 
 def main() -> None:

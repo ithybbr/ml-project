@@ -16,5 +16,7 @@ env/
 .DS_Store
 
 imgs*/
+results/
 *.png
 *.jpg
+*.zip

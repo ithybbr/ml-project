@@ -6,7 +6,9 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from skopt import BayesSearchCV
+from skopt.space import Real, Integer, Categorical
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
@@ -15,17 +17,25 @@ warnings.filterwarnings("ignore")
 RANDOM_STATE = 42
 SCORING_METRIC = "average_precision"
 
-# Hyperparameter grid for Nested CV
+# Hyperparameter space for Bayesian CV
 # Kept relatively concise to avoid excessive runtime
-DEFAULT_PARAM_GRID = {
-    "max_depth": [3, 5, 7],
-    "learning_rate": [0.01, 0.05, 0.1],
-    "n_estimators": [100, 300, 500],
-    "subsample": [0.8, 1.0],
-    "colsample_bytree": [0.8, 1.0],
-    "gamma": [0.1],
-    "reg_alpha": [0.2],
-    "reg_lambda": [2.0]
+DEFAULT_PARAM_SPACE = {
+    # Integers search between a minimum and maximum boundary
+    "max_depth": Integer(3, 8), 
+    "n_estimators": Integer(100, 500),
+    
+    # Reals search any decimal in the boundary. 
+    # 'log-uniform' is statistically proven to find better learning rates faster.
+    "learning_rate": Real(0.01, 0.2, prior='log-uniform'),
+    
+    # Proportions can be searched anywhere between 60% and 100%
+    "subsample": Real(0.6, 1.0),
+    "colsample_bytree": Real(0.6, 1.0),
+    
+    # Regularization parameters translated into true Bayesian search boundaries
+    "gamma": Real(0.0, 0.5),
+    "reg_alpha": Real(0.01, 1.0, prior='log-uniform'),
+    "reg_lambda": Real(1.0, 10.0, prior='log-uniform')
 }
 
 
@@ -62,26 +72,28 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
         scale_pos_weight=float(scale_pos_weight),
         random_state=RANDOM_STATE,
         tree_method="hist",
-        n_jobs=1 # Leave thread management to GridSearchCV
+        n_jobs=1 # Leave thread management to BayesSearchCV
     )
 
     # Configure inner and outer cross-validation strategies
     inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=RANDOM_STATE)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 
-    grid_search = GridSearchCV(
+    bayes_search = BayesSearchCV(
         estimator=base_model,
-        param_grid=DEFAULT_PARAM_GRID,
+        search_spaces=DEFAULT_PARAM_SPACE,
+        n_iter=30,  # <-- The crucial parameter: limits the search to exactly 30 attempts
         scoring=SCORING_METRIC,
         cv=inner_cv,
         n_jobs=-1,
         refit=True, # Ensures the final model is trained on the full dataset passed to fit()
+        random_state=RANDOM_STATE # <-- Ensures reproducible results
     )
 
     # 1. Nested Cross-Validation (Evaluation Step)
     print("Running nested cross-validation...")
     nested_cv_scores = cross_val_score(
-        grid_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
+        bayes_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
     )
     
     mean_score = np.mean(nested_cv_scores)
@@ -90,10 +102,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
 
     # 2. Final Model Training (Fit Step)
     print("Tuning hyperparameters and fitting the final model...")
-    grid_search.fit(X, y)
+    bayes_search.fit(X, y)
     
-    print(f"Best hyperparameters found: {grid_search.best_params_}")
-    return grid_search.best_estimator_
+    print(f"Best hyperparameters found: {bayes_search.best_params_}")
+    return bayes_search.best_estimator_
 
 
 def main() -> None:
