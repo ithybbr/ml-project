@@ -25,15 +25,15 @@ if /I "!USE_VENV!"=="Y" (
     if exist "requirements.txt" (
         echo  -^> Installing dependencies in .venv...
         ".venv\Scripts\python.exe" -m pip install --upgrade pip -q
-        ".venv\Scripts\python.exe" -m pip install -r requirements.txt -q
+        ".venv\Scripts\python.exe" -m pip install -r requirements.txt
     ) else (
         echo  -^> Warning: requirements.txt not found. Skipping pip install.
     )
 ) else (
     if exist "requirements.txt" (
         echo  -^> Installing dependencies in current environment...
-        ".venv\Scripts\python.exe" -m pip install --upgrade pip -q
-        ".venv\Scripts\python.exe" -m pip install -r requirements.txt -q
+        python -m pip install --upgrade pip -q
+        pip install -r requirements.txt -q
     ) else (
         echo  -^> Warning: requirements.txt not found. Skipping pip install.
     )
