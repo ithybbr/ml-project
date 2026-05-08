@@ -123,10 +123,10 @@ if /I "!RUN_EVAL!"=="Y" (
             echo    -^> Executing compare.ipynb for %%f features...
             papermill "compare.ipynb" "compare_%%f_features.ipynb" -p d %%f
             
-            :: NEW: Delete the specific evaluation notebook right after it finishes
             echo    -^> Cleaning up executed evaluation notebook...
             del "compare_%%f_features.ipynb"
         )
+
         cd ..
         echo  -^> Evaluation complete.
     ) else (
@@ -136,9 +136,40 @@ if /I "!RUN_EVAL!"=="Y" (
 echo.
 
 :: ---------------------------------------------------------
-:: 7. Launch Demo App
+:: 7. Fairness Analysis
 :: ---------------------------------------------------------
-set /p LAUNCH_APP="7. Do you want to launch the demo app? (Y/N by default): "
+set /p RUN_FAIRNESS="7. Do you want to run fairness analysis? (Y/N by default): "
+
+if /I "!RUN_FAIRNESS!"=="Y" (
+    echo  -^> Running fairness analysis...
+
+    if exist "src\fairness_analysis.py" (
+        python src/fairness_analysis.py
+    ) else (
+        echo  -^> Warning: src\fairness_analysis.py not found.
+    )
+
+    if exist "notebooks\fairness.ipynb" (
+        cd notebooks
+
+        echo    -^> Executing fairness.ipynb
+        papermill "fairness.ipynb" "fairness_executed.ipynb"
+
+        echo    -^> Cleaning up executed notebook...
+        del "fairness_executed.ipynb"
+
+        cd ..
+        echo  -^> Fairness analysis complete.
+    ) else (
+        echo  -^> Warning: notebooks\fairness.ipynb not found.
+    )
+)
+echo.
+
+:: ---------------------------------------------------------
+:: 8. Launch Demo App
+:: ---------------------------------------------------------
+set /p LAUNCH_APP="8. Do you want to launch the demo app? (Y/N by default): "
 
 if /I "!LAUNCH_APP!"=="Y" (
     echo  -^> Launching Streamlit app...

@@ -122,10 +122,10 @@ if [[ "${RUN_EVAL,,}" == "y" ]]; then
             echo "   -> Executing compare.ipynb for $f features..."
             papermill "compare.ipynb" "compare_${f}_features.ipynb" -p d "$f"
             
-            # Delete the specific evaluation notebook right after it finishes
             echo "   -> Cleaning up executed evaluation notebook..."
             rm "compare_${f}_features.ipynb"
         done
+
         cd ..
         echo " -> Evaluation complete."
     else
@@ -135,9 +135,40 @@ fi
 echo ""
 
 # ---------------------------------------------------------
-# 7. Launch Demo App
+# 7. Fairness Analysis
 # ---------------------------------------------------------
-read -p "7. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
+read -p "7. Do you want to run fairness analysis? (Y/N by default): " RUN_FAIRNESS
+
+if [[ "${RUN_FAIRNESS,,}" == "y" ]]; then
+    echo " -> Running fairness analysis..."
+
+    if [[ -f "src/fairness_analysis.py" ]]; then
+        python3 src/fairness_analysis.py
+    else
+        echo " -> Warning: src/fairness_analysis.py not found."
+    fi
+
+    if [[ -f "notebooks/fairness.ipynb" ]]; then
+        cd notebooks || exit
+
+        echo "   -> Executing fairness.ipynb"
+        papermill "fairness.ipynb" "fairness_executed.ipynb"
+
+        echo "   -> Cleaning up executed notebook..."
+        rm "fairness_executed.ipynb"
+
+        cd ..
+        echo " -> Fairness analysis complete."
+    else
+        echo " -> Warning: notebooks/fairness.ipynb not found."
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------
+# 8. Launch Demo App
+# ---------------------------------------------------------
+read -p "8. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
 
 if [[ "${LAUNCH_APP,,}" == "y" ]]; then
     echo " -> Launching Streamlit app..."
