@@ -33,7 +33,7 @@ if /I "!USE_VENV!"=="Y" (
     if exist "requirements.txt" (
         echo  -^> Installing dependencies in current environment...
         python -m pip install --upgrade pip -q
-        pip install -r requirements.txt -q
+        python -m pip install -r requirements.txt -q
     ) else (
         echo  -^> Warning: requirements.txt not found. Skipping pip install.
     )
@@ -43,36 +43,45 @@ echo.
 :: ---------------------------------------------------------
 :: 2. Download Raw Dataset
 :: ---------------------------------------------------------
-set /p DOWNLOAD_DATA="2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N by default): "
+if not exist "data\raw\data.xls" (
+    set /p DOWNLOAD_DATA="2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N by default): "
 
 if /I "!DOWNLOAD_DATA!"=="Y" (
     echo  -^> Running data download script...
     python src/download_data.py
 )
 echo.
-
+) else (
+    echo  -^> Raw dataset already exists at data\raw\data.xls. Skipping download.
+    echo.
+)
 :: ---------------------------------------------------------
 :: 3. Create Data Split
 :: ---------------------------------------------------------
-set /p CREATE_SPLIT="3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N by default): "
+if exist "data\raw\data.xls" (
+    set /p CREATE_SPLIT="3. Do you want to preprocess raw dataset and create data splits? (Y/N by default): "
 
-if /I "!CREATE_SPLIT!"=="Y" (
-    if exist "notebooks\preprocess.ipynb" (
-        cd notebooks
+    if /I "!CREATE_SPLIT!"=="Y" (
+            if exist "notebooks\preprocess.ipynb" (
+                cd notebooks
 
-        echo    -^> Executing preprocess.ipynb
-        papermill "preprocess.ipynb" "preprocess_executed.ipynb"
-        
-        echo    -^> Cleaning up executed notebook...
-        del "preprocess_executed.ipynb"
+                echo    -^> Executing preprocess.ipynb
+                papermill "preprocess.ipynb" "preprocess_executed.ipynb"
+                
+                echo    -^> Cleaning up executed notebook...
+                del "preprocess_executed.ipynb"
 
-        cd ..
-        echo  -^> Preprocessing and data split creation complete.
-    ) else (
-        echo  -^> Warning: notebooks\preprocess.ipynb not found.
+                cd ..
+                echo  -^> Preprocessing and data split creation complete.
+        ) else (
+            echo  -^> Warning: preprocess.ipynb is not found.
+        )
     )
+    echo.
+) else (
+    echo 3. Create Data Split: Skipped ^(data\raw\data.xls not found^)
+    echo.
 )
-echo.
 
 :: ---------------------------------------------------------
 :: 4. Delete Raw Dataset
@@ -93,7 +102,7 @@ echo.
 :: ---------------------------------------------------------
 :: 5. Train Models
 :: ---------------------------------------------------------
-set /p TRAIN_MODELS="5. Do you want to train the models? (WARNING: it is very slow)(Y/N by default): "
+set /p TRAIN_MODELS="5. Do you want to train the models? (WARNING: it is very slow) (Y/N by default): "
 
 if /I "!TRAIN_MODELS!"=="Y" (
     echo  -^> Scanning 'src' directory for model scripts...
