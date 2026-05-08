@@ -8,7 +8,7 @@ echo ""
 # ---------------------------------------------------------
 # 1. Virtual Environment & Dependencies
 # ---------------------------------------------------------
-read -p "1. Do you want to use a virtual environment (.venv)? (NOTE: This will create a new virtual environment, SKIP if you are already using one) (Y/N): " USE_VENV
+read -p "1. Do you want to use a virtual environment (.venv)? (NOTE: This will create a new virtual environment, SKIP if you are already using one) (Y/N by default): " USE_VENV
 
 if [[ "${USE_VENV,,}" == "y" ]]; then
     if [[ ! -d ".venv" ]]; then
@@ -24,7 +24,7 @@ if [[ "${USE_VENV,,}" == "y" ]]; then
     if [[ -f "requirements.txt" ]]; then
         echo " -> Installing dependencies in .venv..."
         python3 -m pip install --upgrade pip -q
-        python3 -m pip install -r requirements.txt
+        python3 -m pip install -r requirements.txt -q
     else
         echo " -> Warning: requirements.txt not found. Skipping pip install."
     fi
@@ -42,7 +42,7 @@ echo ""
 # ---------------------------------------------------------
 # 2. Download Raw Dataset
 # ---------------------------------------------------------
-read -p "2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N): " DOWNLOAD_DATA
+read -p "2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N by default): " DOWNLOAD_DATA
 
 if [[ "${DOWNLOAD_DATA,,}" == "y" ]]; then
     echo " -> Running data download script..."
@@ -53,7 +53,7 @@ echo ""
 # ---------------------------------------------------------
 # 3. Create Data Split
 # ---------------------------------------------------------
-read -p "3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N): " CREATE_SPLIT
+read -p "3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N by default): " CREATE_SPLIT
 
 if [[ "${CREATE_SPLIT,,}" == "y" ]]; then
     if [[ -f "notebooks/preprocess.ipynb" ]]; then
@@ -76,23 +76,23 @@ echo ""
 # ---------------------------------------------------------
 # 4. Delete Raw Dataset
 # ---------------------------------------------------------
-read -p "4. Do you want to delete the raw dataset? (Y/N): " DELETE_DATA
+if [[ -f "data/raw/data.xls" ]]; then
+    read -p "4. Do you want to delete the raw dataset? (y/N): " DELETE_DATA
 
-if [[ "${DELETE_DATA,,}" == "y" ]]; then
-    echo " -> Deleting the raw dataset file..."
-    if [[ -f "data/raw/data.xls" ]]; then
+    if [[ "${DELETE_DATA,,}" == "y" ]]; then
+        echo " -> Deleting the raw dataset file..."
         rm "data/raw/data.xls"
         echo " -> Successfully deleted data/raw/data.xls"
-    else
-        echo " -> Warning: data/raw/data.xls not found."
     fi
+else
+    echo "4. Delete Raw Dataset: Skipped (data/raw/data.xls not found)"
 fi
 echo ""
 
 # ---------------------------------------------------------
 # 5. Train Models
 # ---------------------------------------------------------
-read -p "5. Do you want to train the models? (WARNING: it is very slow)(Y/N): " TRAIN_MODELS
+read -p "5. Do you want to train the models? (WARNING: it is very slow)(Y/N by default): " TRAIN_MODELS
 
 if [[ "${TRAIN_MODELS,,}" == "y" ]]; then
     echo " -> Scanning 'src' directory for model scripts..."
@@ -111,7 +111,7 @@ echo ""
 # ---------------------------------------------------------
 # 6. Evaluation Results
 # ---------------------------------------------------------
-read -p "6. Do you want to create evaluation results? (Y/N): " RUN_EVAL
+read -p "6. Do you want to create evaluation results? (Y/N by default): " RUN_EVAL
 
 if [[ "${RUN_EVAL,,}" == "y" ]]; then
     echo " -> Generating evaluation results..."
@@ -137,7 +137,7 @@ echo ""
 # ---------------------------------------------------------
 # 7. Launch Demo App
 # ---------------------------------------------------------
-read -p "7. Do you want to launch the demo app? (Y/N): " LAUNCH_APP
+read -p "7. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
 
 if [[ "${LAUNCH_APP,,}" == "y" ]]; then
     echo " -> Launching Streamlit app..."
