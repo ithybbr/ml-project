@@ -2,6 +2,7 @@ import streamlit as st
 import joblib
 import pandas as pd
 import numpy as np
+import os
 
 # ---------------------------------------------------------
 # 1. Base Feature Mapping & True Dataset Medians
@@ -97,15 +98,23 @@ def compute_engineered_features(data: dict) -> dict:
     return f
 
 # ---------------------------------------------------------
-# 3. Fast Cache Model Load
+# 3. Dynamic Cache Model Load
 # ---------------------------------------------------------
 @st.cache_resource
-def load_system():
-    model = joblib.load("models/lightgbm_44features.pkl") 
-    _, _, _, _, _, _, preprocessor = joblib.load("data/processed/44features.pkl")
+def load_system(model_prefix: str, n_features: str):
+    model_path = f"models/{model_prefix}_{n_features}features.pkl"
+    data_path = f"data/processed/{n_features}features.pkl"
+    
+    # Safety check to ensure the files exist before attempting to load
+    if not os.path.exists(model_path) or not os.path.exists(data_path):
+        return None, None
+        
+    model = joblib.load(model_path) 
+    
+    # Unpack the processed data tuple to get the preprocessor (7th element)
+    _, _, _, _, _, _, preprocessor = joblib.load(data_path)
     return model, preprocessor
 
-model, preprocessor = load_system()
 
 # ---------------------------------------------------------
 # 4. Streamlit UI
@@ -162,18 +171,44 @@ with st.form("customer_form"):
 
     st.markdown("---")
     
-    # --- MOVED: Risk Tolerance Settings now live right above the submit button ---
-    st.subheader("⚙️ Risk Tolerance Settings")
-    st.write("Adjust the exact cutoff point to declare a customer 'High Risk' based on current business policy.")
+    st.subheader("⚙️ System & Risk Configuration")
+    st.write("Select the machine learning architecture, dataset complexity, and your business risk tolerance.")
     
-    decision_threshold = st.slider(
-        "Decision Threshold", 
-        min_value=0.10, 
-        max_value=0.90, 
-        value=0.50, 
-        step=0.01,
-        help="Models output a probability between 0 and 1. Lower values catch more defaults but trigger more false alarms."
-    )
+    # Changed from 2 columns to 3 columns
+    sys_cols = st.columns(3)
+    
+    model_options = {
+        "Random Forest": "random_forest",
+        "LightGBM": "lightgbm",
+        "XGBoost": "xgboost",
+        "Gradient Boosting": "gradient_boosting",
+        "Logistic Regression": "logreg",
+        "Decision Tree": "decision_tree",
+        "KNN": "knn"
+    }
+    
+    feature_options = {
+        "44 Features (Full Engineered)": "44",
+        "18 Features (Baseline)": "18",
+        "3 Features (Minimal)": "3"
+    }
+    
+    with sys_cols[0]:
+        selected_model_display = st.selectbox("Model Architecture", list(model_options.keys()), index=0)
+        
+    with sys_cols[1]:
+        selected_feature_display = st.selectbox("Dataset", list(feature_options.keys()), index=0)
+    
+    with sys_cols[2]:
+        # Tucked the slider into the third column
+        decision_threshold = st.slider(
+            "Decision Threshold", 
+            min_value=0.10, 
+            max_value=0.90, 
+            value=0.50, 
+            step=0.01,
+            help="Models output a probability between 0 and 1. Lower values catch more defaults but trigger more false alarms."
+        )
     
     submit = st.form_submit_button("Predict Default Risk", type="primary", width="stretch")
 
@@ -181,48 +216,59 @@ with st.form("customer_form"):
 # 5. Feature Computation & Inference
 # ---------------------------------------------------------
 if submit:
-    full_customer_data = compute_engineered_features(input_data)
-    input_df = pd.DataFrame([full_customer_data])
+    # Load the specific model requested by the user just in time
+    model_code = model_options[selected_model_display]
+    feature_code = feature_options[selected_feature_display]
     
-    try:
-        if hasattr(preprocessor, "feature_names_in_"):
-            prep_expected_features = list(preprocessor.feature_names_in_)
-            for col in prep_expected_features:
-                if col not in input_df.columns:
-                    input_df[col] = 0.0
-            input_df = input_df[prep_expected_features]
+    model, preprocessor = load_system(model_code, feature_code)
+    
+    if model is None:
+        st.error(f"⚠️ Missing Pipeline Artifacts: Could not find trained files for **{selected_model_display}** using the **{feature_code}-feature** dataset. Please run the model training scripts for this combination first.")
+    else:
+        full_customer_data = compute_engineered_features(input_data)
+        input_df = pd.DataFrame([full_customer_data])
         
-        processed = preprocessor.transform(input_df)
-        
-        if hasattr(model, "feature_names_in_"):
-            processed = pd.DataFrame(processed, columns=model.feature_names_in_)
+        try:
+            if hasattr(preprocessor, "feature_names_in_"):
+                prep_expected_features = list(preprocessor.feature_names_in_)
+                for col in prep_expected_features:
+                    if col not in input_df.columns:
+                        input_df[col] = 0.0
+                # Slices down the 44 generated features to the exact number required by the loaded preprocessor
+                input_df = input_df[prep_expected_features]
             
-        prob = model.predict_proba(processed)[0][1]
-        
-        st.subheader("Risk Assessment")
-        
-        # Display dynamic context based on the threshold they just submitted
-        if decision_threshold < 0.40:
-            st.info("📉 Executed under **Conservative Policy**: Prioritizing default capture over approval volume.")
-        elif decision_threshold > 0.60:
-            st.info("📈 Executed under **Aggressive Policy**: Prioritizing approval volume over default capture.")
+            processed = preprocessor.transform(input_df)
             
-        warning_threshold = decision_threshold / 2.0
-        
-        if prob >= decision_threshold:
-            st.error(f"🔴 High Risk (Default Probability: {prob:.2%})")
-            st.write(f"This exceeds the current strictness threshold of **{decision_threshold:.2%}**.")
-        elif prob >= warning_threshold:
-            st.warning(f"🟡 Medium Risk (Default Probability: {prob:.2%})")
-            st.write(f"Customer is approaching the decision threshold. Manual review recommended.")
-        else:
-            st.success(f"🟢 Low Risk (Default Probability: {prob:.2%})")
+            if hasattr(model, "feature_names_in_"):
+                processed = pd.DataFrame(processed, columns=model.feature_names_in_)
+                
+            prob = model.predict_proba(processed)[0][1]
             
-        with st.expander("View Auto-Engineered Risk Variables"):
-            engineered_df = input_df.iloc[:, 23:]
-            display_df = engineered_df.rename(columns=ENGINEERED_FEATURES_MAP)
-            display_df = display_df.T.rename(columns={0: "Calculated Value"})
-            st.dataframe(display_df, width="stretch")
+            st.subheader("Risk Assessment")
             
-    except Exception as e:
-        st.error(f"Error processing inputs: {str(e)}")
+            if decision_threshold < 0.40:
+                st.info("📉 Executed under **Conservative Policy**: Prioritizing default capture over approval volume.")
+            elif decision_threshold > 0.60:
+                st.info("📈 Executed under **Aggressive Policy**: Prioritizing approval volume over default capture.")
+                
+            warning_threshold = decision_threshold / 2.0
+            
+            if prob >= decision_threshold:
+                st.error(f"🔴 High Risk (Default Probability: {prob:.2%})")
+                st.write(f"This exceeds the current strictness threshold of **{decision_threshold:.2%}**.")
+            elif prob >= warning_threshold:
+                st.warning(f"🟡 Medium Risk (Default Probability: {prob:.2%})")
+                st.write(f"Customer is approaching the decision threshold. Manual review recommended.")
+            else:
+                st.success(f"🟢 Low Risk (Default Probability: {prob:.2%})")
+                
+            with st.expander("View Auto-Engineered Risk Variables"):
+                # Ensure we only display features that were actually used by the model pipeline
+                used_cols = [c for c in input_df.columns if c.startswith("X") and int(c[1:].split("_")[0]) >= 24]
+                engineered_df = input_df[used_cols]
+                display_df = engineered_df.rename(columns=ENGINEERED_FEATURES_MAP)
+                display_df = display_df.T.rename(columns={0: "Calculated Value"})
+                st.dataframe(display_df, width="stretch")
+                
+        except Exception as e:
+            st.error(f"Error processing inputs: {str(e)}")
