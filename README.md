@@ -1,9 +1,9 @@
 ```markdown
 # Fintech Credit Scoring System 💳📈
 
-A complete end-to-end Machine Learning pipeline and interactive web application for predicting credit card default risk.
-This project automates everything from raw data ingestion and advanced feature engineering to model training, evaluation,
-and deployment via Streamlit.
+A complete end-to-end Machine Learning pipeline and interactive web application for predicting
+credit card default risk. This project automates everything from raw data ingestion and
+advanced feature engineering to model training, evaluation, and deployment via Streamlit.
 
 ---
 
@@ -19,9 +19,10 @@ and deployment via Streamlit.
 
 ## 🎯 Overview
 This system uses historical financial behavior (repayment status, bill amounts, past payments)
-and demographic data to assess the likelihood of a customer defaulting on their credit card next month.
-It features an automated data pipeline that expands a baseline of 18 features into 44 highly predictive engineered features
-(e.g., delinquency trends, utilization ratios, payment pressure).
+and demographic data to assess the likelihood of a customer defaulting on their credit card
+next month. It features an automated data pipeline that expands a baseline of 18 features
+into 44 highly predictive engineered features (e.g., delinquency trends, utilization ratios,
+payment pressure).
 
 ---
 
