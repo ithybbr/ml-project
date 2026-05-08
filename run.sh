@@ -10,7 +10,8 @@ echo ""
 # ---------------------------------------------------------
 read -p "1. Do you want to use a virtual environment (.venv)? (NOTE: This will create a new virtual environment, SKIP if you are already using one) (Y/N by default): " USE_VENV
 
-if [[ "${USE_VENV,,}" == "y" ]]; then
+# ${VAR,,} makes the input lowercase. -z checks if they just pressed Enter.
+if [[ "${USE_VENV,,}" == "y" || -z "$USE_VENV" ]]; then
     if [[ ! -d ".venv" ]]; then
         echo " -> Creating virtual environment in '.venv'..."
         python3 -m venv .venv
@@ -42,36 +43,46 @@ echo ""
 # ---------------------------------------------------------
 # 2. Download Raw Dataset
 # ---------------------------------------------------------
-read -p "2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N by default): " DOWNLOAD_DATA
+if [[ ! -f "data/raw/data.xls" ]]; then
+    read -p "2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N by default): " DOWNLOAD_DATA
 
-if [[ "${DOWNLOAD_DATA,,}" == "y" ]]; then
-    echo " -> Running data download script..."
-    python3 src/download_data.py
+    if [[ "${DOWNLOAD_DATA,,}" == "y" || -z "$DOWNLOAD_DATA" ]]; then
+        echo " -> Running data download script..."
+        python3 src/download_data.py
+    fi
+    echo ""
+else
+    echo " -> Raw dataset already exists at data/raw/data.xls. Skipping download."
+    echo ""
 fi
-echo ""
 
 # ---------------------------------------------------------
 # 3. Create Data Split
 # ---------------------------------------------------------
-read -p "3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N by default): " CREATE_SPLIT
+if [[ -f "data/raw/data.xls" ]]; then
+    read -p "3. Do you want to preprocess raw dataset and create data splits? (Y/N by default): " CREATE_SPLIT
 
-if [[ "${CREATE_SPLIT,,}" == "y" ]]; then
-    if [[ -f "notebooks/preprocess.ipynb" ]]; then
-        cd notebooks || exit
+    if [[ "${CREATE_SPLIT,,}" == "y" || -z "$CREATE_SPLIT" ]]; then
+        if [[ -f "notebooks/preprocess.ipynb" ]]; then
+            cd notebooks || exit
 
-        echo "   -> Executing preprocess.ipynb"
-        papermill "preprocess.ipynb" "preprocess_executed.ipynb"
-        
-        echo "   -> Cleaning up executed notebook..."
-        rm "preprocess_executed.ipynb"
+            echo "   -> Executing preprocess.ipynb"
+            papermill "preprocess.ipynb" "preprocess_executed.ipynb"
+            
+            echo "   -> Cleaning up executed notebook..."
+            rm -f "preprocess_executed.ipynb"
 
-        cd ..
-        echo " -> Preprocessing and data split creation complete."
-    else
-        echo " -> Warning: notebooks/preprocess.ipynb not found."
+            cd ..
+            echo " -> Preprocessing and data split creation complete."
+        else
+            echo " -> Warning: preprocess.ipynb is not found."
+        fi
     fi
+    echo ""
+else
+    echo "3. Create Data Split: Skipped (data/raw/data.xls not found)"
+    echo ""
 fi
-echo ""
 
 # ---------------------------------------------------------
 # 4. Delete Raw Dataset
@@ -81,7 +92,7 @@ if [[ -f "data/raw/data.xls" ]]; then
 
     if [[ "${DELETE_DATA,,}" == "y" ]]; then
         echo " -> Deleting the raw dataset file..."
-        rm "data/raw/data.xls"
+        rm -f "data/raw/data.xls"
         echo " -> Successfully deleted data/raw/data.xls"
     fi
 else
@@ -92,12 +103,18 @@ echo ""
 # ---------------------------------------------------------
 # 5. Train Models
 # ---------------------------------------------------------
-read -p "5. Do you want to train the models? (WARNING: it is very slow)(Y/N by default): " TRAIN_MODELS
+read -p "5. Do you want to train the models? (WARNING: it is very slow) (Y/N by default): " TRAIN_MODELS
 
-if [[ "${TRAIN_MODELS,,}" == "y" ]]; then
+if [[ "${TRAIN_MODELS,,}" == "y" || -z "$TRAIN_MODELS" ]]; then
     echo " -> Scanning 'src' directory for model scripts..."
-    if ls src/*model.py 1> /dev/null 2>&1; then
-        for f in src/*model.py; do
+    
+    # Nullglob prevents the loop from executing literally 'src/*model.py' if empty
+    shopt -s nullglob
+    model_files=(src/*model.py)
+    shopt -u nullglob
+    
+    if [ ${#model_files[@]} -gt 0 ]; then
+        for f in "${model_files[@]}"; do
             echo "   -> Running $f..."
             python3 "$f"
         done
@@ -113,17 +130,18 @@ echo ""
 # ---------------------------------------------------------
 read -p "6. Do you want to create evaluation results? (Y/N by default): " RUN_EVAL
 
-if [[ "${RUN_EVAL,,}" == "y" ]]; then
+if [[ "${RUN_EVAL,,}" == "y" || -z "$RUN_EVAL" ]]; then
     echo " -> Generating evaluation results..."
+    
     if [[ -f "notebooks/compare.ipynb" ]]; then
         cd notebooks || exit
         
-        for f in 3 18 44; do
-            echo "   -> Executing compare.ipynb for $f features..."
-            papermill "compare.ipynb" "compare_${f}_features.ipynb" -p d "$f"
+        for features in 3 18 44; do
+            echo "   -> Executing compare.ipynb for $features features..."
+            papermill "compare.ipynb" "compare_${features}_features.ipynb" -p d $features
             
             echo "   -> Cleaning up executed evaluation notebook..."
-            rm "compare_${f}_features.ipynb"
+            rm -f "compare_${features}_features.ipynb"
         done
 
         cd ..
@@ -131,11 +149,12 @@ if [[ "${RUN_EVAL,,}" == "y" ]]; then
     else
         echo " -> Warning: notebooks/compare.ipynb not found."
     fi
-        if [[ -f "src/fairness_analysis.py" ]]; then
+    
+    if [[ -f "src/fairness_analysis.py" ]]; then
         echo " -> Running fairness analysis..."
         python3 src/fairness_analysis.py
     fi
-
+    
     if [[ -f "notebooks/fairness.ipynb" ]]; then
         cd notebooks || exit
 
@@ -143,21 +162,20 @@ if [[ "${RUN_EVAL,,}" == "y" ]]; then
         papermill "fairness.ipynb" "fairness_executed.ipynb"
 
         echo "   -> Cleaning up executed notebook..."
-        rm "fairness_executed.ipynb"
+        rm -f "fairness_executed.ipynb"
 
         cd ..
         echo " -> Fairness analysis complete."
-    else
-        echo " -> Warning: notebooks/fairness.ipynb not found."
     fi
 
     if [[ -f "src/shap_analysis.py" ]]; then
-        echo "   -> Generating SHAP Explainability plots..."
-        python src/shap_analysis.py
+        echo " -> Generating SHAP Explainability plots..."
+        python3 src/shap_analysis.py
     fi
+
     if [[ -f "src/calibration_analysis.py" ]]; then
-        echo "   -> Generating Calibration Curves..."
-        python src/calibration_analysis.py
+        echo " -> Generating Calibration Curves..."
+        python3 src/calibration_analysis.py
     fi
 fi
 echo ""
@@ -167,7 +185,7 @@ echo ""
 # ---------------------------------------------------------
 read -p "7. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
 
-if [[ "${LAUNCH_APP,,}" == "y" ]]; then
+if [[ "${LAUNCH_APP,,}" == "y" || -z "$LAUNCH_APP" ]]; then
     echo " -> Launching Streamlit app..."
     if [[ -f "app.py" ]]; then
         streamlit run app.py
