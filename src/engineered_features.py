@@ -1,11 +1,8 @@
-
-
 from pathlib import Path
 import pandas as pd
 import warnings
 
 warnings.filterwarnings("ignore")
-
 
 # ============================================================
 # PATHS
@@ -17,12 +14,29 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_FILE = OUTPUT_DIR / "44features.xls"
 
+# ============================================================
+# COLUMN MAPPING
+# ============================================================
+FEATURE_MAP = {
+    "ID": "", # Keeps the cell directly above 'ID' blank, matching your image
+    "LIMIT_BAL": "X1", "SEX": "X2", "EDUCATION": "X3", "MARRIAGE": "X4", "AGE": "X5",
+    "PAY_0": "X6", "PAY_2": "X7", "PAY_3": "X8", "PAY_4": "X9", "PAY_5": "X10", "PAY_6": "X11",
+    "BILL_AMT1": "X12", "BILL_AMT2": "X13", "BILL_AMT3": "X14", "BILL_AMT4": "X15", "BILL_AMT5": "X16", "BILL_AMT6": "X17",
+    "PAY_AMT1": "X18", "PAY_AMT2": "X19", "PAY_AMT3": "X20", "PAY_AMT4": "X21", "PAY_AMT5": "X22", "PAY_AMT6": "X23",
+    "delq_max": "X24", "delq_mean": "X25", "delq_count_positive": "X26", "delq_count_severe": "X27",
+    "delq_recent": "X28", "delq_trend": "X29", "ever_severe_delq": "X30",
+    "bill_mean": "X31", "bill_max": "X32", "bill_std": "X33", "bill_trend": "X34",
+    "pay_mean": "X35", "pay_max": "X36", "pay_std": "X37", "pay_trend": "X38", "zero_pay_count": "X39",
+    "bill_utilization_mean": "X40", "bill_utilization_max": "X41", "high_util_count": "X42",
+    "pay_ratio_mean": "X43", "pay_ratio_min": "X44", "underpay_count": "X45",
+    "avg_bill_minus_pay": "X46", "recent_bill_minus_pay": "X47",
+    "DEFAULT": "Y"
+}
 
 # ============================================================
 # 1. LOAD RAW DATA
 # ============================================================
 def load_raw_data(file_path: Path) -> pd.DataFrame:
-    # For .xls you may need: pip install xlrd
     df = pd.read_excel(file_path)
 
     # In this dataset, the first row often contains the real column names
@@ -101,7 +115,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         for i in range(1, 7)
     })
 
-
     out["bill_utilization_mean"] = util_df.mean(axis=1)
     out["bill_utilization_max"] = util_df.max(axis=1)
     out["high_util_count"] = (util_df > 0.8).sum(axis=1)
@@ -109,7 +122,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     out["pay_ratio_mean"] = ratio_df.mean(axis=1)
     out["pay_ratio_min"] = ratio_df.min(axis=1)
     out["underpay_count"] = (ratio_df < 0.2).sum(axis=1)
-
 
     # ----------------------------
     # Pressure features
@@ -121,12 +133,28 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# 3. SAVE OUTPUT
+# 3. SAVE OUTPUT (PANDAS SAFE DOUBLE-HEADER)
 # ============================================================
 def save_output(df: pd.DataFrame, output_file: Path):
-    df.to_excel(output_file, index=False)
+    # 1. Ensure columns are ordered sequentially based on the map
+    ordered_formal_cols = [col for col in FEATURE_MAP.keys() if col in df.columns]
+    df_ordered = df[ordered_formal_cols]
+    
+    # 2. Extract the "X" names for the top row
+    x_columns = [FEATURE_MAP[col] for col in df_ordered.columns]
+    
+    # 3. Create a 1-row DataFrame containing the formal names
+    second_header_row = pd.DataFrame([df_ordered.columns.values], columns=x_columns)
+    
+    # 4. Rename the main dataframe's columns to the "X" names
+    df_ordered.columns = x_columns
+    
+    # 5. Stack the formal names row on top of the actual data
+    final_df = pd.concat([second_header_row, df_ordered], ignore_index=True)
+    
+    # 6. Save to Excel safely
+    final_df.to_excel(output_file, index=False)
     print(f"Engineered dataset saved to: {output_file}")
-
 
 # ============================================================
 # 4. MAIN
@@ -140,12 +168,7 @@ def main():
 
     save_output(df_engineered, OUTPUT_FILE)
 
-    print("\n All engineered columns added:")
-    original_cols = set(df_raw.columns)
-    new_cols = [col for col in df_engineered.columns if col not in original_cols]
-    print(new_cols[:24])
-
-    print("\nTotal new engineered features:", len(new_cols))
+    print("\nAll engineered columns formatted with double-headers successfully.")
 
 
 if __name__ == "__main__":
