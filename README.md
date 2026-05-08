@@ -1,4 +1,3 @@
-```markdown
 # Fintech Credit Scoring System 💳📈
 
 A complete end-to-end Machine Learning pipeline and interactive web application for predicting
@@ -30,17 +29,18 @@ payment pressure).
 
 ## 📁 Project Structure
 
-├── data/                       
+```text
+├── data/                        
 │   ├── raw/                    # Raw downloaded data (data.xls)
 │   └── processed/              # Processed ML-ready data (3, 18, and 44 features)
-│   models/                     # Trained model checkpoints (.pkl files)
+├── models/                     # Trained model checkpoints (.pkl files)
 ├── notebooks/                  # Jupyter Notebook templates
 │   ├── compare.ipynb           # Evaluates model performance using Nested CV
-│   ├── eda.ipynb               # data exploration
-|   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
+│   ├── eda.ipynb               # Data exploration
+│   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
 ├── src/                        # Core Python modules
-|   |── __init__.py             # to be able to import scripts
-|   |── data_loader.py          # used to load .xls files
+│   ├── __init__.py             # Makes src importable
+│   ├── data_loader.py          # Used to load .xls files
 │   ├── download_data.py        # Fetches raw dataset from UCI repo
 │   ├── engineered_features.py  # Generates the 44-feature dataset
 │   ├── preprocessing.py        # Scaling, imputation, and One-Hot Encoding
@@ -48,7 +48,6 @@ payment pressure).
 ├── app.py                      # Main Streamlit web application
 ├── requirements.txt            # Python package dependencies
 └── run.sh / run.bat            # Interactive pipeline automation scripts
-
 ```
 
 ---
