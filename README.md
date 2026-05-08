@@ -38,6 +38,11 @@ payment pressure).
 │   ├── compare.ipynb           # Evaluates model performance using Nested CV
 │   ├── eda.ipynb               # Data exploration
 │   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
+├── results/                    # Evaluation results
+│   ├── 3features/              # Results for 3 feature dataset
+│   ├── 18features/             # Results for 18 feature dataset
+│   ├── 44features/             # Results for 44 feature dataset
+│   └── fairness/               # Fairness results
 ├── src/                        # Core Python modules
 │   ├── __init__.py             # Makes src importable
 │   ├── data_loader.py          # Used to load .xls files
@@ -45,6 +50,7 @@ payment pressure).
 │   ├── engineered_features.py  # Generates the 44-feature dataset
 │   ├── preprocessing.py        # Scaling, imputation, and One-Hot Encoding
 │   └── *_model.py              # Training scripts for various ML architectures
+├── tests/                      # Minimal unit tests
 ├── app.py                      # Main Streamlit web application
 ├── requirements.txt            # Python package dependencies
 └── run.sh / run.bat            # Interactive pipeline automation scripts
@@ -62,14 +68,12 @@ The easiest way to set up and run the project is by using the interactive pipeli
 2. Grant execution permissions to the bash script:
 ```bash
 chmod +x run.sh
-
 ```
 
 
 3. Run the interactive setup wizard:
 ```bash
 ./run.sh
-
 ```
 
 
@@ -80,9 +84,15 @@ chmod +x run.sh
 2. Run the batch script:
 ```cmd
 ./run.bat
-
 ```
 *(Follow the on-screen prompts to build your environment, download data, train models, and launch the UI!)*
+
+### Unit tests:
+1. Open Command Prompt or PowerShell in the project directory.
+2. Run the following line:
+```cmd
+python -m pytest tests/
+```
 
 ---
 
