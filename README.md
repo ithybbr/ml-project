@@ -13,7 +13,7 @@ advanced feature engineering to model training, evaluation, fairness analysis, a
 - [Quickstart Guide](#-quickstart-guide)
 - [Features & Pipeline Steps](#%EF%B8%8F-features--pipeline-steps)
 - [Machine Learning Models](#-machine-learning-models)
-- [Fairness Analysis](#%EF%B8%8F-fairness-analysis)
+- [Interpretability & Calibration](#%EF%B8%8F-Interpretability-&-Calibration)
 - [Interactive Web App](#%EF%B8%8F-interactive-web-app)
 
 ---
@@ -113,7 +113,10 @@ The pipeline is managed interactively and includes the following capabilities:
 
 4. **Model Training:** Executes scripts in `src/` to train models on the processed data arrays.
 5. **Evaluation:** Uses `papermill` to run nested cross-validation and output dynamic evaluation notebooks without overwriting your templates.
-6. **Fairness Analysis:** Runs demographic fairness evaluation across SEX, EDUCATION, and MARRIAGE groups and generates fairness visualizations and CSV reports.
+6. **Interpretability & Calibration:**
+   * **Fairness Analysis:** Checks for demographic disparities (Sex, Education, Marriage) in model recall and false positive rates.
+   * **Probability Calibration:** Generates reliability diagrams and calculates Brier scores to ensure predicted default probabilities are statistically accurate.
+   * **SHAP Explainability:** Uses `TreeExplainer` to calculate SHAP values, generating beeswarm and bar plots to visualize exactly which features drive the model's decisions.
 
 ---
 
@@ -133,9 +136,9 @@ The system is configured to train and evaluate multiple model architectures to f
 
 ---
 
-## ⚖️ Fairness Analysis
+## ⚖️ Interpretability & Calibration
 
-The project includes a fairness evaluation pipeline implemented in:
+The project includes a **fairness evaluation** pipeline implemented in:
 
 ```bash
 src/fairness_analysis.py
@@ -166,6 +169,60 @@ Results are automatically saved to:
 ```bash
 results/fairness/
 ```
+The project includes a **probability calibration** pipeline implemented in:
+
+```bash
+src/calibration_analysis.py
+```
+The calibration system evaluates the reliability of predicted default probabilities across top models:
+
+* LightGBM
+
+* XGBoost
+
+* Random Forest
+
+* Logistic Regression
+
+Generated outputs include:
+
+* Calibration curves (reliability diagrams)
+
+* Brier score comparisons
+
+* CSV reports of model calibration metrics
+
+Results are automatically saved to:
+
+```bash
+results/calibration/
+```
+
+The project includes a **model explainability** pipeline implemented in:
+
+```bash
+src/shap_analysis.py
+```
+
+The SHAP system evaluates feature importance and directional impact for tree-based models:
+
+* LightGBM
+
+* XGBoost
+
+* Random Forest
+
+Generated outputs include:
+
+* Global feature importance bar charts
+
+* Summary beeswarm plots (showing the directional impact of features on default risk)
+
+* Results are automatically saved to:
+
+```bash
+results/shap/
+```
 
 ---
 
@@ -175,7 +232,6 @@ Launch the UI by selecting "Y" to **Launch Demo App** at the end of the `run.sh`
 
 ```bash
 streamlit run app.py
-
 ```
 
 **App Features:**
