@@ -13,7 +13,7 @@ advanced feature engineering to model training, evaluation, fairness analysis, a
 - [Quickstart Guide](#-quickstart-guide)
 - [Features & Pipeline Steps](#%EF%B8%8F-features--pipeline-steps)
 - [Machine Learning Models](#-machine-learning-models)
-- [Interpretability & Calibration](#%EF%B8%8F-Interpretability-&-Calibration)
+- [Interpretability & Calibration](#%EF%B8%8F-interpretability--calibration)
 - [Interactive Web App](#%EF%B8%8F-interactive-web-app)
 
 ---
