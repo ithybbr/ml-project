@@ -8,12 +8,12 @@ advanced feature engineering to model training, evaluation, and deployment via S
 
 ## 📑 Table of Contents
 
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Quickstart Guide](#quickstart-guide)
-- [Features & Pipeline Steps](#features--pipeline-steps)
-- [Machine Learning Models](#machine-learning-models)
-- [Interactive Web App](#interactive-web-app)
+- [Overview](#-overview)
+- [Project Structure](#-project-structure)
+- [Quickstart Guide](#-quickstart-guide)
+- [Features & Pipeline Steps](#%EF%B8%8F-features--pipeline-steps)
+- [Machine Learning Models](#-machine-learning-models)
+- [Interactive Web App](#%EF%B8%8F-interactive-web-app)
 
 ---
 
