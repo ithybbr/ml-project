@@ -77,6 +77,7 @@ echo.
 :: ---------------------------------------------------------
 :: 4. Delete Raw Dataset
 :: ---------------------------------------------------------
+if /I "!DOWNLOAD_DATA!"=="Y" (
 set /p DELETE_DATA="4. Do you want to delete the raw dataset? (Y/N): "
 
 if /I "!DELETE_DATA!"=="Y" (
@@ -89,6 +90,7 @@ if /I "!DELETE_DATA!"=="Y" (
     )
 )
 echo.
+)
 
 :: ---------------------------------------------------------
 :: 5. Train Models
