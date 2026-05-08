@@ -19,4 +19,6 @@ env/
 *.png
 *.jpg
 *.zip
+*.csv
+*.xls
 !model_comparison_heatmap.png

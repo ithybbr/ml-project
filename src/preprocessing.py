@@ -36,7 +36,7 @@ def split_data(
     """
     Splits a dataframe into training, validation, and test sets.
 
-    Applies a stratified split based on the target column to ensure 
+    Applies a stratified split based on the target column to ensure
     class distribution is maintained across all three datasets.
 
     Args:
