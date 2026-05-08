@@ -267,33 +267,24 @@ def run_preprocessing(
     name: Optional[str] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     """
-    Executes the comprehensive data preprocessing lifecycle sequentially:
-    filtering target columns, splitting data, fitting the pipeline, transforming arrays,
-    and saving the serialized artifacts to the disk.
-
-    Args:
-        df (pd.DataFrame): The raw combined dataframe.
-        target_column (str, optional): Label column. Defaults to TARGET_COLUMN.
-        drop_columns (Optional[list[str]], optional): Columns to exclude prior to splitting. Defaults to None.
-        random_state (int, optional): Seed for split shuffles. Defaults to 42.
-        save (bool, optional): Whether to write outputs to disk. Defaults to True.
-        path (str | Path, optional): Output save directory. Defaults to BASE_DIR / "data" / "processed".
-        name (Optional[str], optional): Filename prefix for the saved artifact. Defaults to None.
-
-    Returns:
-        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]: The
-            six core DataFrames and Series arrays ready for machine learning model ingestion.
+    Executes the comprehensive data preprocessing lifecycle sequentially.
     """
     if drop_columns is None:
         drop_columns = ["X2", "X3", "X4"]
 
     df = df.copy()
 
-    # Drop specified columns before splitting
+    # 1. EXTRACT DEMOGRAPHICS BEFORE DROPPING THEM
+    demographics_exist = all(col in df.columns for col in ["X2", "X3", "X4"])
+    if demographics_exist:
+        demo_df = df[["X2", "X3", "X4"]].copy()
+
+    # 2. Drop specified columns before splitting
     for col in drop_columns:
         if col in df.columns:
             df = df.drop(columns=col)
 
+    # 3. Split data
     split = split_data(
         df=df,
         target_column=target_column,
@@ -302,6 +293,23 @@ def run_preprocessing(
         random_state=random_state,
     )
 
+    # 4. SAVE DEMOGRAPHIC.PKL FOR FAIRNESS ANALYSIS
+    if save and demographics_exist and name == "44features":
+        demo_path = Path(path) / "demographic.pkl"
+        demo_path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(
+            [
+                demo_df.loc[split.X_train.index],
+                demo_df.loc[split.X_val.index],
+                demo_df.loc[split.X_test.index],
+                split.y_train,
+                split.y_val,
+                split.y_test,
+            ],
+            demo_path,
+        )
+
+    # 5. Process and transform
     X_train_processed, X_val_processed, X_test_processed, preprocessor = (
         preprocess_and_transform(split.X_train, split.X_val, split.X_test)
     )
