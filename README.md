@@ -8,6 +8,7 @@ advanced feature engineering to model training, evaluation, and deployment via S
 ---
 
 ## 📑 Table of Contents
+
 - [Overview](#overview)
 - [Project Structure](#project-structure)
 - [Quickstart Guide](#quickstart-guide)
@@ -18,6 +19,7 @@ advanced feature engineering to model training, evaluation, and deployment via S
 ---
 
 ## 🎯 Overview
+
 This system uses historical financial behavior (repayment status, bill amounts, past payments)
 and demographic data to assess the likelihood of a customer defaulting on their credit card
 next month. It features an automated data pipeline that expands a baseline of 18 features
@@ -28,9 +30,14 @@ payment pressure).
 
 ## 📁 Project Structure
 
-├── app.py                      # Main Streamlit web application
-├── run.sh / run.bat            # Interactive pipeline automation scripts
-├── requirements.txt            # Python package dependencies
+├── data/                       
+│   ├── raw/                    # Raw downloaded data (data.xls)
+│   └── processed/              # Processed ML-ready data (3, 18, and 44 features)
+│   models/                     # Trained model checkpoints (.pkl files)
+├── notebooks/                  # Jupyter Notebook templates
+│   ├── compare.ipynb           # Evaluates model performance using Nested CV
+│   ├── eda.ipynb               # data exploration
+|   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
 ├── src/                        # Core Python modules
 |   |── __init__.py             # to be able to import scripts
 |   |── data_loader.py          # used to load .xls files
@@ -38,14 +45,9 @@ payment pressure).
 │   ├── engineered_features.py  # Generates the 44-feature dataset
 │   ├── preprocessing.py        # Scaling, imputation, and One-Hot Encoding
 │   └── *_model.py              # Training scripts for various ML architectures
-├── notebooks/                  # Jupyter Notebook templates
-│   ├── compare.ipynb           # Evaluates model performance using Nested CV
-│   ├── eda.ipynb               # data exploration
-|   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
-├── data/                       
-│   ├── raw/                    # Raw downloaded data (data.xls)
-│   └── processed/              # Processed ML-ready data (3, 18, and 44 features)
-└── models/                     # Trained model checkpoints (.pkl files)
+├── app.py                      # Main Streamlit web application
+├── requirements.txt            # Python package dependencies
+└── run.sh / run.bat            # Interactive pipeline automation scripts
 
 ```
 
