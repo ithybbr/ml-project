@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
 # Virtual environment
 .venv/
@@ -15,8 +16,7 @@ env/
 # OS files
 .DS_Store
 
-imgs*/
-results/
 *.png
 *.jpg
 *.zip
+!model_comparison_heatmap.png

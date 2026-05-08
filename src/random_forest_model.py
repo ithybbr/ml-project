@@ -24,41 +24,42 @@ DEFAULT_PARAM_SPACE = {
     "max_depth": Integer(5, 50),  # 50 acts as an effective substitute for 'None'
     "min_samples_split": Integer(2, 20),
     "min_samples_leaf": Integer(1, 10),
-    
     # Categorical works identically to standard lists
-    "max_features": Categorical(["sqrt", "log2"])
+    "max_features": Categorical(["sqrt", "log2"]),
 }
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
     """Loads the dataset and combines train/val sets for cross-validation."""
     data = joblib.load(dataset_path)
-    
+
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
     X_train, X_val, _, y_train, y_val, _ = data[:6]
 
     # Convert to pandas objects to ensure safe concatenation
     X_train_df = pd.DataFrame(X_train)
     X_val_df = pd.DataFrame(X_val)
-    
+
     # Handle single-column dataframes or series for y
     y_train_series = pd.Series(np.ravel(y_train)).astype(int)
     y_val_series = pd.Series(np.ravel(y_val)).astype(int)
 
     # Combine training and validation sets
     X_combined = pd.concat([X_train_df, X_val_df], axis=0).reset_index(drop=True)
-    y_combined = pd.concat([y_train_series, y_val_series], axis=0).reset_index(drop=True)
+    y_combined = pd.concat([y_train_series, y_val_series], axis=0).reset_index(
+        drop=True
+    )
 
     return X_combined, y_combined
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifier:
     """Performs nested CV for evaluation and trains the final model."""
-    
+
     base_model = RandomForestClassifier(
-        class_weight="balanced_subsample", # Recalculates weights for each bootstrap sample
+        class_weight="balanced_subsample",  # Recalculates weights for each bootstrap sample
         random_state=RANDOM_STATE,
-        n_jobs=1 # Leave thread management to BayesSearchCV to prevent thread collision
+        n_jobs=1,  # Leave thread management to BayesSearchCV to prevent thread collision
     )
 
     # Configure inner and outer cross-validation strategies
@@ -69,12 +70,12 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
     bayes_search = BayesSearchCV(
         estimator=base_model,
         search_spaces=DEFAULT_PARAM_SPACE,
-        n_iter=30,          # The crucial parameter: exactly 30 search attempts
+        n_iter=30,  # The crucial parameter: exactly 30 search attempts
         scoring=SCORING_METRIC,
         cv=inner_cv,
-        n_jobs=-1,          # Parallelize across folds
-        refit=True,         # Ensures the final model is trained on the full dataset
-        random_state=RANDOM_STATE
+        n_jobs=-1,  # Parallelize across folds
+        refit=True,  # Ensures the final model is trained on the full dataset
+        random_state=RANDOM_STATE,
     )
 
     # 1. Nested Cross-Validation (Evaluation Step)
@@ -82,7 +83,7 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
     nested_cv_scores = cross_val_score(
         bayes_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
     )
-    
+
     mean_score = np.mean(nested_cv_scores)
     std_score = np.std(nested_cv_scores)
     print(f"Nested CV {SCORING_METRIC}: {mean_score:.4f} ± {std_score:.4f}")
@@ -90,19 +91,19 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
     # 2. Final Model Training (Fit Step)
     print("Tuning hyperparameters and fitting the final model...")
     bayes_search.fit(X, y)
-    
+
     print(f"Best hyperparameters found: {bayes_search.best_params_}")
     return bayes_search.best_estimator_
 
 
 def main() -> None:
     n_features = [3, 18, 44]
-    
+
     for n in n_features:
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print(f"PROCESSING DATASET: {n} FEATURES")
-        print("="*50)
-        
+        print("=" * 50)
+
         # Adjust paths based on your directory structure
         dataset_path = Path(f"../data/processed/{n}features.pkl")
         output_model_path = Path(f"../models/random_forest_{n}features.pkl")
@@ -118,7 +119,7 @@ def main() -> None:
         # Execute pipeline
         print(f"Loading data from {dataset_path}...")
         X, y = load_and_prepare_data(dataset_path)
-        
+
         print(f"Combined Default rate: {y.mean():.4f}")
 
         final_model = train_with_nested_cv(X, y)

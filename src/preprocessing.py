@@ -13,7 +13,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
 TARGET_COLUMN = "Y"
 
 
@@ -35,8 +34,23 @@ def split_data(
     random_state: int = 42,
 ) -> SplitData:
     """
-    Split dataframe into train/validation/test sets.
-    Default split is 70/15/15.
+    Splits a dataframe into training, validation, and test sets.
+
+    Applies a stratified split based on the target column to ensure 
+    class distribution is maintained across all three datasets.
+
+    Args:
+        df (pd.DataFrame): The complete raw dataset.
+        target_column (str, optional): The name of the label column. Defaults to "Y".
+        test_size (float, optional): Proportion of the dataset to include in the test split. Defaults to 0.15.
+        val_size (float, optional): Proportion of the dataset to include in the validation split. Defaults to 0.15.
+        random_state (int, optional): Seed for reproducible shuffles. Defaults to 42.
+
+    Raises:
+        ValueError: If the specified target_column is not found in the dataframe.
+
+    Returns:
+        SplitData: A dataclass containing X_train, X_val, X_test, y_train, y_val, and y_test.
     """
     if target_column not in df.columns:
         raise ValueError(f"Target column '{target_column}' not found in dataframe.")
@@ -146,7 +160,7 @@ def get_feature_names(preprocessor: ColumnTransformer) -> list[str]:
     for name, transformer, columns in preprocessor.transformers_:
         if name == "remainder":
             continue
-        
+
         if not columns:  # skip if no columns assigned
             continue
 
@@ -159,7 +173,9 @@ def get_feature_names(preprocessor: ColumnTransformer) -> list[str]:
 
     return feature_names
 
+
 BASE_DIR = Path().resolve().parent
+
 
 def save_processed_data(
     X_train: pd.DataFrame,
@@ -181,7 +197,9 @@ def save_processed_data(
     output_dir.mkdir(parents=True, exist_ok=True)
     pipeline_path.parent.mkdir(parents=True, exist_ok=True)
 
-    joblib.dump((X_train, X_val, X_test, y_train, y_val, y_test, preprocessor), pipeline_path)
+    joblib.dump(
+        (X_train, X_val, X_test, y_train, y_val, y_test, preprocessor), pipeline_path
+    )
 
 
 def run_preprocessing(
@@ -203,14 +221,14 @@ def run_preprocessing(
     """
     if drop_columns is None:
         drop_columns = ["X2", "X3", "X4"]
-        
+
     df = df.copy()
-    
+
     # Drop specified columns before splitting
     for col in drop_columns:
         if col in df.columns:
             df = df.drop(columns=col)
-            
+
     split = split_data(
         df=df,
         target_column=target_column,

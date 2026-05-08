@@ -21,42 +21,41 @@ SCORING_METRIC = "average_precision"
 # Kept relatively concise to avoid excessive runtime
 DEFAULT_PARAM_SPACE = {
     # Integers search between a minimum and maximum boundary
-    "max_depth": Integer(3, 8), 
+    "max_depth": Integer(3, 8),
     "n_estimators": Integer(100, 500),
-    
-    # Reals search any decimal in the boundary. 
+    # Reals search any decimal in the boundary.
     # 'log-uniform' is statistically proven to find better learning rates faster.
-    "learning_rate": Real(0.01, 0.2, prior='log-uniform'),
-    
+    "learning_rate": Real(0.01, 0.2, prior="log-uniform"),
     # Proportions can be searched anywhere between 60% and 100%
     "subsample": Real(0.6, 1.0),
     "colsample_bytree": Real(0.6, 1.0),
-    
     # Regularization parameters translated into true Bayesian search boundaries
     "gamma": Real(0.0, 0.5),
-    "reg_alpha": Real(0.01, 1.0, prior='log-uniform'),
-    "reg_lambda": Real(1.0, 10.0, prior='log-uniform')
+    "reg_alpha": Real(0.01, 1.0, prior="log-uniform"),
+    "reg_lambda": Real(1.0, 10.0, prior="log-uniform"),
 }
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
     """Loads the dataset and combines train/val sets for cross-validation."""
     data = joblib.load(dataset_path)
-    
+
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
     X_train, X_val, _, y_train, y_val, _ = data[:6]
 
     # Convert to pandas objects to ensure safe concatenation
     X_train_df = pd.DataFrame(X_train)
     X_val_df = pd.DataFrame(X_val)
-    
+
     # Handle single-column dataframes or series for y
     y_train_series = pd.Series(np.ravel(y_train)).astype(int)
     y_val_series = pd.Series(np.ravel(y_val)).astype(int)
 
     # Combine training and validation sets
     X_combined = pd.concat([X_train_df, X_val_df], axis=0).reset_index(drop=True)
-    y_combined = pd.concat([y_train_series, y_val_series], axis=0).reset_index(drop=True)
+    y_combined = pd.concat([y_train_series, y_val_series], axis=0).reset_index(
+        drop=True
+    )
 
     return X_combined, y_combined
 
@@ -72,7 +71,7 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
         scale_pos_weight=float(scale_pos_weight),
         random_state=RANDOM_STATE,
         tree_method="hist",
-        n_jobs=1 # Leave thread management to BayesSearchCV
+        n_jobs=1,  # Leave thread management to BayesSearchCV
     )
 
     # Configure inner and outer cross-validation strategies
@@ -86,8 +85,8 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
         scoring=SCORING_METRIC,
         cv=inner_cv,
         n_jobs=-1,
-        refit=True, # Ensures the final model is trained on the full dataset passed to fit()
-        random_state=RANDOM_STATE # <-- Ensures reproducible results
+        refit=True,  # Ensures the final model is trained on the full dataset passed to fit()
+        random_state=RANDOM_STATE,  # <-- Ensures reproducible results
     )
 
     # 1. Nested Cross-Validation (Evaluation Step)
@@ -95,7 +94,7 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
     nested_cv_scores = cross_val_score(
         bayes_search, X, y, cv=outer_cv, scoring=SCORING_METRIC, n_jobs=-1
     )
-    
+
     mean_score = np.mean(nested_cv_scores)
     std_score = np.std(nested_cv_scores)
     print(f"Nested CV {SCORING_METRIC}: {mean_score:.4f} ± {std_score:.4f}")
@@ -103,19 +102,19 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
     # 2. Final Model Training (Fit Step)
     print("Tuning hyperparameters and fitting the final model...")
     bayes_search.fit(X, y)
-    
+
     print(f"Best hyperparameters found: {bayes_search.best_params_}")
     return bayes_search.best_estimator_
 
 
 def main() -> None:
     n_features = [3, 18, 44]
-    
+
     for n in n_features:
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print(f"PROCESSING DATASET: {n} FEATURES")
-        print("="*50)
-        
+        print("=" * 50)
+
         # Adjust paths based on your directory structure
         dataset_path = Path(f"../data/processed/{n}features.pkl")
         output_model_path = Path(f"../models/xgboost_{n}features.pkl")
@@ -131,7 +130,7 @@ def main() -> None:
         # Execute pipeline
         print(f"Loading data from {dataset_path}...")
         X, y = load_and_prepare_data(dataset_path)
-        
+
         print(f"Combined Default rate: {y.mean():.4f}")
 
         final_model = train_with_nested_cv(X, y)

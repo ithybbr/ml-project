@@ -5,19 +5,22 @@ from sklearn.metrics import accuracy_score
 import joblib
 from collections import Counter
 
+
 # ==========================================
 # 1. Vectorized Model Definition
 # ==========================================
 class RuleBasedModel:
-    def __init__(self, pred_thresh=3, x6_t=0.5, x1_t=1.0, x18_t=0.7, x6_w=2, x1_w=1, x18_w=1):
+    def __init__(
+        self, pred_thresh=3, x6_t=0.5, x1_t=1.0, x18_t=0.7, x6_w=2, x1_w=1, x18_w=1
+    ):
         # Final prediction threshold
         self.pred_thresh = pred_thresh
-        
+
         # Internal rule thresholds
         self.x6_t = x6_t
         self.x1_t = x1_t
         self.x18_t = x18_t
-        
+
         # Internal score weights
         self.x6_w = x6_w
         self.x1_w = x1_w
@@ -27,18 +30,18 @@ class RuleBasedModel:
         # VECTORIZED SCORING: Evaluates all rows simultaneously in memory
         # This replaces the slow X.apply(axis=1) method
         score = np.zeros(len(X))
-        
+
         # Add weights based on boolean masks
         score += (X["X6"] > self.x6_t).astype(int) * self.x6_w
         score += (X["X1"] < self.x1_t).astype(int) * self.x1_w
         score += (X["X18"] < self.x18_t).astype(int) * self.x18_w
-        
+
         return score
 
     def predict(self, X):
         scores = self.predict_score(X)
         return (scores >= self.pred_thresh).astype(int)
-        
+
     def pickle(self, path="../models/rule_based_model.pkl"):
         joblib.dump(self, path)
 
@@ -46,7 +49,9 @@ class RuleBasedModel:
 # ==========================================
 # 2. Optimized Nested CV Implementation
 # ==========================================
-def nested_cv_rule_based(X, y, param_grid, n_iter=100, outer_splits=5, inner_splits=3, metric=accuracy_score):
+def nested_cv_rule_based(
+    X, y, param_grid, n_iter=100, outer_splits=5, inner_splits=3, metric=accuracy_score
+):
     """
     Implements nested cross-validation using Randomized Search.
     n_iter: Number of random parameter combinations to test per fold.
@@ -65,27 +70,33 @@ def nested_cv_rule_based(X, y, param_grid, n_iter=100, outer_splits=5, inner_spl
         best_inner_score = -1.0
 
         # Create a random sample of the parameter grid for this fold
-        sampled_params = list(ParameterSampler(param_grid, n_iter=n_iter, random_state=fold))
-        
+        sampled_params = list(
+            ParameterSampler(param_grid, n_iter=n_iter, random_state=fold)
+        )
+
         if fold == 1:
-             print(f"Testing {len(sampled_params)} random combinations per outer fold...")
+            print(
+                f"Testing {len(sampled_params)} random combinations per outer fold..."
+            )
 
         # Inner Loop: Find the best parameter combination in the random sample
         for params in sampled_params:
             inner_scores = []
-            
-            for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
+
+            for inner_train_idx, inner_val_idx in inner_cv.split(
+                X_train_outer, y_train_outer
+            ):
                 X_val_inner = X_train_outer.iloc[inner_val_idx]
                 y_val_inner = y_train_outer.iloc[inner_val_idx]
 
                 model = RuleBasedModel(**params)
-                
+
                 y_pred_inner = model.predict(X_val_inner)
                 score = metric(y_val_inner, y_pred_inner)
                 inner_scores.append(score)
 
             avg_inner_score = np.mean(inner_scores)
-            
+
             if avg_inner_score > best_inner_score:
                 best_inner_score = avg_inner_score
                 best_params = params
@@ -94,15 +105,19 @@ def nested_cv_rule_based(X, y, param_grid, n_iter=100, outer_splits=5, inner_spl
         best_model_for_fold = RuleBasedModel(**best_params)
         y_pred_outer = best_model_for_fold.predict(X_test_outer)
         outer_score = metric(y_test_outer, y_pred_outer)
-        
+
         outer_scores.append(outer_score)
         best_params_list.append(best_params)
 
-        print(f"Fold {fold} | Best Params: {best_params} | Outer Test Score: {outer_score:.4f}")
+        print(
+            f"Fold {fold} | Best Params: {best_params} | Outer Test Score: {outer_score:.4f}"
+        )
 
     print("-" * 50)
-    print(f"Overall Nested CV Score: {np.mean(outer_scores):.4f} ± {np.std(outer_scores):.4f}")
-    
+    print(
+        f"Overall Nested CV Score: {np.mean(outer_scores):.4f} ± {np.std(outer_scores):.4f}"
+    )
+
     return outer_scores, best_params_list
 
 
@@ -112,15 +127,17 @@ def nested_cv_rule_based(X, y, param_grid, n_iter=100, outer_splits=5, inner_spl
 if __name__ == "__main__":
     print("Loading data...")
     try:
-        X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = joblib.load("data/processed/3features.pkl")
+        X_train, X_val, X_test, y_train, y_val, y_test, preprocessor = joblib.load(
+            "data/processed/3features.pkl"
+        )
     except FileNotFoundError:
         print("Data file not found. Please verify the path.")
         exit()
-        
+
     y_train = y_train.astype(int)
     y_val = y_val.astype(int)
     y_test = y_test.astype(int)
-    
+
     print("Combining Train and Val sets for Cross-Validation...")
     X_cv = pd.concat([X_train, X_val], axis=0).reset_index(drop=True)
     y_cv = pd.concat([y_train, y_val], axis=0).reset_index(drop=True)
@@ -135,31 +152,34 @@ if __name__ == "__main__":
         "x6_t": np.linspace(-1, 1, 100),
         "x1_t": np.linspace(-1.5, 1, 100),
         "x18_t": np.linspace(-0.5, 2, 100),
-        "x6_w": [1, 2, 3, 4, 5, 6, 7],       
-        "x1_w": [1, 2, 3, 4, 5, 6, 7],       
-        "x18_w": [1, 2, 3, 4, 5, 6, 7]       
+        "x6_w": [1, 2, 3, 4, 5, 6, 7],
+        "x1_w": [1, 2, 3, 4, 5, 6, 7],
+        "x18_w": [1, 2, 3, 4, 5, 6, 7],
     }
 
     print("\nStarting Optimized Nested CV...")
-    
-    # n_iter determines how many random combinations are tested. 
+
+    # n_iter determines how many random combinations are tested.
     cv_scores, best_params_list = nested_cv_rule_based(
-        X=X_cv, 
-        y=y_cv, 
-        param_grid=param_grid, 
-        n_iter=300,           # <-- Controls the speed/thoroughness tradeoff
-        outer_splits=5, 
+        X=X_cv,
+        y=y_cv,
+        param_grid=param_grid,
+        n_iter=300,  # <-- Controls the speed/thoroughness tradeoff
+        outer_splits=5,
         inner_splits=3,
-        metric=accuracy_score 
+        metric=accuracy_score,
     )
 
     # Find the most frequently selected parameters across folds
     param_tuples = [tuple(sorted(p.items())) for p in best_params_list]
     most_common_tuple = Counter(param_tuples).most_common(1)[0][0]
     final_best_params = dict(most_common_tuple)
-    
+
     # Format the floats for cleaner console output
-    formatted_params = {k: round(v, 3) if isinstance(v, float) else v for k, v in final_best_params.items()}
+    formatted_params = {
+        k: round(v, 3) if isinstance(v, float) else v
+        for k, v in final_best_params.items()
+    }
     print(f"\nMost frequently selected parameters across folds:\n{formatted_params}")
 
     print(f"\nApplying final parameters to unseen holdout X_test...")
