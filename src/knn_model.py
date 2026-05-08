@@ -1,3 +1,11 @@
+"""
+K-Nearest Neighbors Training Module.
+
+This module automates the training and hyperparameter tuning of a
+K-Nearest Neighbors pipeline. It includes standard scaling within the
+pipeline to prevent data leakage during the nested cross-validation process.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,7 +35,16 @@ DEFAULT_PARAM_GRID = {
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Loads the dataset and combines train/val sets for cross-validation."""
+    """
+    Loads the processed dataset and concatenates the training and validation splits.
+
+    Args:
+        dataset_path (Path): Path to the serialized (.pkl) feature dataset.
+
+    Returns:
+        tuple[pd.DataFrame, pd.Series]: A tuple containing the combined feature matrix (X)
+            and the target vector (y) ready for cross-validation.
+    """
     data = joblib.load(dataset_path)
 
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
@@ -51,8 +68,17 @@ def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> Pipeline:
-    """Performs nested CV for evaluation and trains the final pipeline."""
+    """
+    Performs nested cross-validation to search hyperparameter space and trains the final pipeline.
 
+    Args:
+        X (pd.DataFrame): The combined feature matrix.
+        y (pd.Series): The combined target labels.
+
+    Returns:
+        Pipeline: The fitted pipeline containing the StandardScaler and KNeighborsClassifier
+            instantiated with the optimal hyperparameters.
+    """
     # KNN requires scaled data, so we build a pipeline to ensure scaling
     # happens correctly inside every cross-validation fold without data leakage.
     base_model = Pipeline(
@@ -97,6 +123,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> Pipeline:
 
 
 def main() -> None:
+    """
+    Executes the training sequence for the predefined dataset complexities (3, 18, and 44 features)
+    and saves the resulting pipelines to the designated output folder.
+    """
     n_features = [3, 18, 44]
 
     for n in n_features:

@@ -1,18 +1,54 @@
+"""
+Rule-Based Classification Module.
+
+This module implements a custom, highly interpretable rule-based classifier.
+It scores users based on hard thresholds across specific financial features
+(e.g., Delinquency, Credit Limit) and implements a bespoke nested cross-validation
+loop to optimize those discrete threshold parameters.
+"""
+
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, ParameterSampler
 from sklearn.metrics import accuracy_score
 import joblib
 from collections import Counter
+from typing import Any, Callable
 
 
 # ==========================================
 # 1. Vectorized Model Definition
 # ==========================================
 class RuleBasedModel:
+    """
+    A deterministic scoring model that evaluates specific financial features against
+    learned thresholds to assign a risk score.
+    """
+
     def __init__(
-        self, pred_thresh=3, x6_t=0.5, x1_t=1.0, x18_t=0.7, x6_w=2, x1_w=1, x18_w=1
-    ):
+        self,
+        pred_thresh: int | float = 3,
+        x6_t: float = 0.5,
+        x1_t: float = 1.0,
+        x18_t: float = 0.7,
+        x6_w: int | float = 2,
+        x1_w: int | float = 1,
+        x18_w: int | float = 1,
+    ) -> None:
+        """
+        Initializes the RuleBasedModel with scoring weights and thresholds.
+
+        Args:
+            pred_thresh (int | float): The final cumulative score required to classify as Default (1).
+            x6_t (float): Threshold for Feature X6 (e.g., Repayment Status).
+            x1_t (float): Threshold for Feature X1 (e.g., Credit Limit).
+            x18_t (float): Threshold for Feature X18 (e.g., Payment Amount).
+            x6_w (int | float): Score penalty added if X6 condition is met.
+            x1_w (int | float): Score penalty added if X1 condition is met.
+            x18_w (int | float): Score penalty added if X18 condition is met.
+        """
         # Final prediction threshold
         self.pred_thresh = pred_thresh
 
@@ -26,7 +62,16 @@ class RuleBasedModel:
         self.x1_w = x1_w
         self.x18_w = x18_w
 
-    def predict_score(self, X):
+    def predict_score(self, X: pd.DataFrame) -> np.ndarray:
+        """
+        Calculates the continuous risk score for each row in the dataset.
+
+        Args:
+            X (pd.DataFrame): The feature matrix to evaluate.
+
+        Returns:
+            np.ndarray: An array of accumulated risk scores.
+        """
         # VECTORIZED SCORING: Evaluates all rows simultaneously in memory
         # This replaces the slow X.apply(axis=1) method
         score = np.zeros(len(X))
@@ -38,11 +83,26 @@ class RuleBasedModel:
 
         return score
 
-    def predict(self, X):
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """
+        Converts risk scores into hard binary predictions based on the `pred_thresh`.
+
+        Args:
+            X (pd.DataFrame): The feature matrix to evaluate.
+
+        Returns:
+            np.ndarray: Binary array where 1 indicates Default risk, and 0 indicates Safe.
+        """
         scores = self.predict_score(X)
         return (scores >= self.pred_thresh).astype(int)
 
-    def pickle(self, path="../models/rule_based_model.pkl"):
+    def pickle(self, path: str = "../models/rule_based_model.pkl") -> None:
+        """
+        Serializes and saves the configured model to disk.
+
+        Args:
+            path (str, optional): Destination file path. Defaults to "../models/rule_based_model.pkl".
+        """
         joblib.dump(self, path)
 
 
@@ -50,11 +110,31 @@ class RuleBasedModel:
 # 2. Optimized Nested CV Implementation
 # ==========================================
 def nested_cv_rule_based(
-    X, y, param_grid, n_iter=100, outer_splits=5, inner_splits=3, metric=accuracy_score
-):
+    X: pd.DataFrame,
+    y: pd.Series,
+    param_grid: dict[str, list[Any] | np.ndarray],
+    n_iter: int = 100,
+    outer_splits: int = 5,
+    inner_splits: int = 3,
+    metric: Callable = accuracy_score,
+) -> tuple[list[float], list[dict[str, Any]]]:
     """
-    Implements nested cross-validation using Randomized Search.
-    n_iter: Number of random parameter combinations to test per fold.
+    Implements a custom nested cross-validation loop using Randomized Search to
+    optimize the discrete thresholds of the RuleBasedModel.
+
+    Args:
+        X (pd.DataFrame): The feature matrix.
+        y (pd.Series): The target labels.
+        param_grid (dict[str, list[Any] | np.ndarray]): Dictionary defining the boundaries for each parameter.
+        n_iter (int, optional): Number of random parameter combinations to test per fold. Defaults to 100.
+        outer_splits (int, optional): Number of folds for outer performance evaluation. Defaults to 5.
+        inner_splits (int, optional): Number of folds for inner hyperparameter tuning. Defaults to 3.
+        metric (Callable, optional): Scikit-learn compatible scoring metric. Defaults to accuracy_score.
+
+    Returns:
+        tuple[list[float], list[dict[str, Any]]]: A tuple containing:
+            - list[float]: The outer fold test scores.
+            - list[dict[str, Any]]: The best parameters selected for each outer fold.
     """
     outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=42)
     inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=42)

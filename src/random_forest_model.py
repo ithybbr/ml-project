@@ -1,3 +1,12 @@
+"""
+Random Forest Training Module.
+
+This module automates the training and hyperparameter tuning of a
+scikit-learn Random Forest model. It uses Bayesian Optimization (skopt)
+within a nested cross-validation framework to efficiently search the
+hyperparameter space and evaluate robust model performance.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,7 +39,16 @@ DEFAULT_PARAM_SPACE = {
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Loads the dataset and combines train/val sets for cross-validation."""
+    """
+    Loads the processed dataset and concatenates the training and validation splits.
+
+    Args:
+        dataset_path (Path): Path to the serialized (.pkl) feature dataset.
+
+    Returns:
+        tuple[pd.DataFrame, pd.Series]: A tuple containing the combined feature matrix (X)
+            and the target vector (y) ready for cross-validation.
+    """
     data = joblib.load(dataset_path)
 
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
@@ -54,8 +72,17 @@ def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifier:
-    """Performs nested CV for evaluation and trains the final model."""
+    """
+    Performs nested cross-validation using Bayesian Search to optimize hyperparameters
+    and trains the final model.
 
+    Args:
+        X (pd.DataFrame): The combined feature matrix.
+        y (pd.Series): The combined target labels.
+
+    Returns:
+        RandomForestClassifier: The fitted model instantiated with the optimal hyperparameters.
+    """
     base_model = RandomForestClassifier(
         class_weight="balanced_subsample",  # Recalculates weights for each bootstrap sample
         random_state=RANDOM_STATE,
@@ -97,6 +124,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> RandomForestClassifie
 
 
 def main() -> None:
+    """
+    Executes the training sequence for the predefined dataset complexities (3, 18, and 44 features)
+    and saves the resulting models to the designated output folder.
+    """
     n_features = [3, 18, 44]
 
     for n in n_features:

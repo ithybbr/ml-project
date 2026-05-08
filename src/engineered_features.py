@@ -1,3 +1,12 @@
+"""
+Feature Engineering Module.
+
+This script processes the raw financial dataset to construct the 44-feature dataset.
+It mathematically derives advanced risk indicators including delinquency trends,
+credit utilization ratios, and payment behavior metrics. It also manages the complex
+double-header serialization required for scikit-learn compatibility.
+"""
+
 from pathlib import Path
 import pandas as pd
 import warnings
@@ -70,10 +79,19 @@ FEATURE_MAP = {
 }
 
 
-# ============================================================
-# 1. LOAD RAW DATA
-# ============================================================
 def load_raw_data(file_path: Path) -> pd.DataFrame:
+    """
+    Ingests the raw Excel file and standardizes column formats.
+
+    Resolves edge cases such as shifted headers present in the original dataset
+    and enforces correct datatypes prior to transformation.
+
+    Args:
+        file_path (Path): The path to the raw dataset on disk.
+
+    Returns:
+        pd.DataFrame: A cleaned dataframe with unified column names.
+    """
     df = pd.read_excel(file_path)
 
     # In this dataset, the first row often contains the real column names
@@ -99,10 +117,20 @@ def load_raw_data(file_path: Path) -> pd.DataFrame:
     return df
 
 
-# ============================================================
-# 2. FEATURE ENGINEERING
-# ============================================================
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates advanced predictive features based on historical financial tracking.
+
+    Derives secondary statistics such as maximum delinquency, utilization percentages,
+    payment trends, and debt ratios.
+
+    Args:
+        df (pd.DataFrame): The base dataframe containing standard raw features.
+
+    Returns:
+        pd.DataFrame: A horizontally expanded dataframe containing the original data
+            plus the newly engineered columns.
+    """
     out = df.copy()
 
     pay_status_cols = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
@@ -187,10 +215,17 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-# ============================================================
-# 3. SAVE OUTPUT (PANDAS SAFE DOUBLE-HEADER)
-# ============================================================
-def save_output(df: pd.DataFrame, output_file: Path):
+def save_output(df: pd.DataFrame, output_file: Path) -> None:
+    """
+    Serializes the dataframe to an Excel file formatted with a dual header row.
+
+    The first row contains the generic 'X' variable mappings (e.g., X1, X2), and the
+    second row contains the formal textual names.
+
+    Args:
+        df (pd.DataFrame): The fully engineered dataframe.
+        output_file (Path): The target save location on disk.
+    """
     # 1. Ensure columns are ordered sequentially based on the map
     ordered_formal_cols = [col for col in FEATURE_MAP.keys() if col in df.columns]
     df_ordered = df[ordered_formal_cols]
@@ -212,10 +247,10 @@ def save_output(df: pd.DataFrame, output_file: Path):
     print(f"Engineered dataset saved to: {output_file}")
 
 
-# ============================================================
-# 4. MAIN
-# ============================================================
-def main():
+def main() -> None:
+    """
+    Executes the ingestion, engineering, and serialization sequence.
+    """
     df_raw = load_raw_data(RAW_FILE)
     print("Raw dataset shape:", df_raw.shape)
 

@@ -1,3 +1,12 @@
+"""
+XGBoost Training Module.
+
+This module automates the training and hyperparameter tuning of an
+XGBoost classifier. It utilizes Bayesian Optimization (skopt) within a
+nested cross-validation loop to efficiently search parameters like learning
+rate and tree depth, ensuring robust and reproducible evaluation metrics.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,7 +46,16 @@ DEFAULT_PARAM_SPACE = {
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Loads the dataset and combines train/val sets for cross-validation."""
+    """
+    Loads the processed dataset and concatenates the training and validation splits.
+
+    Args:
+        dataset_path (Path): Path to the serialized (.pkl) feature dataset.
+
+    Returns:
+        tuple[pd.DataFrame, pd.Series]: A tuple containing the combined feature matrix (X)
+            and the target vector (y) ready for cross-validation.
+    """
     data = joblib.load(dataset_path)
 
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
@@ -61,7 +79,17 @@ def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
-    """Performs nested CV for evaluation and trains the final model."""
+    """
+    Performs nested cross-validation using Bayesian Search to optimize hyperparameters
+    and trains the final model.
+
+    Args:
+        X (pd.DataFrame): The combined feature matrix.
+        y (pd.Series): The combined target labels.
+
+    Returns:
+        XGBClassifier: The fitted model instantiated with the optimal hyperparameters.
+    """
     # Dynamically calculate class imbalance for the combined dataset
     scale_pos_weight = (y == 0).sum() / max((y == 1).sum(), 1)
 
@@ -108,6 +136,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> XGBClassifier:
 
 
 def main() -> None:
+    """
+    Executes the training sequence for the predefined dataset complexities (3, 18, and 44 features)
+    and saves the resulting models to the designated output folder.
+    """
     n_features = [3, 18, 44]
 
     for n in n_features:

@@ -1,3 +1,11 @@
+"""
+Dataset Downloader.
+
+Automates downloading the raw 'Default of Credit Card Clients' dataset
+directly from the UCI Machine Learning Repository, extracting the zip archive,
+and standardizing the filename for the rest of the pipeline.
+"""
+
 import urllib.request
 import zipfile
 import os
@@ -13,7 +21,11 @@ ZIP_PATH = RAW_DIR / "temp_dataset.zip"
 FINAL_FILE = RAW_DIR / "data.xls"
 
 
-def main():
+def main() -> None:
+    """
+    Downloads the dataset zip file, extracts its contents, renames the target Excel file
+    to 'data.xls', and cleans up temporary archive files.
+    """
     # 1. Ensure the target directory exists
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 

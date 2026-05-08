@@ -1,3 +1,11 @@
+"""
+Logistic Regression Training Module.
+
+This module automates the training and hyperparameter tuning of a
+scikit-learn Logistic Regression model. It employs a nested cross-validation
+strategy for robust performance estimation and exports the final fitted models.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,7 +29,16 @@ DEFAULT_PARAM_GRID = {"C": [0.001, 0.01, 0.1, 1.0, 10.0], "penalty": ["l2"]}
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Loads the dataset and combines train/val sets for cross-validation."""
+    """
+    Loads the processed dataset and concatenates the training and validation splits.
+
+    Args:
+        dataset_path (Path): Path to the serialized (.pkl) feature dataset.
+
+    Returns:
+        tuple[pd.DataFrame, pd.Series]: A tuple containing the combined feature matrix (X)
+            and the target vector (y) ready for cross-validation.
+    """
     data = joblib.load(dataset_path)
 
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
@@ -45,8 +62,16 @@ def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> LogisticRegression:
-    """Performs nested CV for evaluation and trains the final model."""
+    """
+    Performs nested cross-validation to search hyperparameter space and trains the final model.
 
+    Args:
+        X (pd.DataFrame): The combined feature matrix.
+        y (pd.Series): The combined target labels.
+
+    Returns:
+        LogisticRegression: The fitted model instantiated with the optimal hyperparameters.
+    """
     base_model = LogisticRegression(
         class_weight="balanced",  # Natively handles the imbalanced default rate
         max_iter=2000,  # Increased to prevent ConvergenceWarnings during CV
@@ -86,6 +111,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> LogisticRegression:
 
 
 def main() -> None:
+    """
+    Executes the training sequence for the predefined dataset complexities (3, 18, and 44 features)
+    and saves the resulting models to the designated output folder.
+    """
     n_features = [3, 18, 44]
 
     for n in n_features:

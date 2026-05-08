@@ -1,3 +1,11 @@
+"""
+Decision Tree Training Module.
+
+This script handles the loading of preprocessed data, performs hyperparameter tuning
+using nested cross-validation to ensure robust evaluation, and trains the final
+Decision Tree model. Checkpoints are automatically saved to the models directory.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,7 +31,16 @@ DEFAULT_PARAM_GRID = {
 
 
 def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Loads the dataset and combines train/val sets for cross-validation."""
+    """
+    Loads the dataset from a pickle file and combines train/val sets for cross-validation.
+
+    Args:
+        dataset_path (Path): The file path to the saved .pkl dataset.
+
+    Returns:
+        tuple[pd.DataFrame, pd.Series]: A tuple containing the combined feature matrix (X)
+        and the target vector (y).
+    """
     data = joblib.load(dataset_path)
 
     # Extract the first 6 elements: X_train, X_val, X_test, y_train, y_val, y_test
@@ -47,7 +64,16 @@ def load_and_prepare_data(dataset_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> DecisionTreeClassifier:
-    """Performs nested CV for evaluation and trains the final model."""
+    """
+    Performs nested cross-validation for evaluation and trains the final model.
+
+    Args:
+        X (pd.DataFrame): The combined feature matrix.
+        y (pd.Series): The combined target vector.
+
+    Returns:
+        DecisionTreeClassifier: The final model trained on the full dataset with optimal hyperparameters.
+    """
     base_model = DecisionTreeClassifier(random_state=RANDOM_STATE)
 
     # Configure inner and outer cross-validation strategies
@@ -82,6 +108,10 @@ def train_with_nested_cv(X: pd.DataFrame, y: pd.Series) -> DecisionTreeClassifie
 
 
 def main() -> None:
+    """
+    Executes the complete training pipeline across all defined feature combinations,
+    saving the final checkpoints to the disk.
+    """
     n_features = [3, 18, 44]
     for n in n_features:
         dataset_path = Path(f"data/processed/{n}features.pkl")

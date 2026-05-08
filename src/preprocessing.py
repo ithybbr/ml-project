@@ -1,4 +1,11 @@
-# src/preprocessing.py
+"""
+Data Preprocessing Pipeline Module.
+
+This module provides utilities to split data safely, identify feature types,
+impute missing values, encode categorical strings, and apply standard scaling.
+It ensures strict adherence to avoiding data leakage by separating fit and transform phases.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,10 +21,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 TARGET_COLUMN = "Y"
+BASE_DIR = Path().resolve().parent
 
 
 @dataclass
 class SplitData:
+    """A data structure for holding train, validation, and test splits."""
+
     X_train: pd.DataFrame
     X_val: pd.DataFrame
     X_test: pd.DataFrame
@@ -82,6 +92,16 @@ def split_data(
 
 
 def detect_column_types(X: pd.DataFrame) -> tuple[list[str], list[str]]:
+    """
+    Identifies categorical and numerical columns within the feature matrix based on predefined lists.
+
+    Args:
+        X (pd.DataFrame): The feature matrix to inspect.
+
+    Returns:
+        tuple[list[str], list[str]]: Two lists, the first containing the names of categorical columns,
+            and the second containing the names of numerical columns.
+    """
     known_categorical = ["X2", "X3", "X4", "X30"]
     categorical_cols = [col for col in known_categorical if col in X.columns]
     numerical_cols = [col for col in X.columns if col not in categorical_cols]
@@ -90,11 +110,16 @@ def detect_column_types(X: pd.DataFrame) -> tuple[list[str], list[str]]:
 
 def build_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
     """
-    Build preprocessing pipeline:
-    - impute missing categorical values with most frequent
-    - one-hot encode categorical variables
-    - impute missing numerical values with median
-    - scale numerical variables
+    Constructs a scikit-learn ColumnTransformer pipeline targeting numeric and categorical data.
+
+    Categorical processing involves most-frequent imputation and One-Hot Encoding.
+    Numerical processing involves median imputation and Standard Scaling.
+
+    Args:
+        X_train (pd.DataFrame): The training feature matrix used to identify columns.
+
+    Returns:
+        ColumnTransformer: The un-fitted preprocessing pipeline object.
     """
     categorical_cols, numerical_cols = detect_column_types(X_train)
 
@@ -131,8 +156,20 @@ def preprocess_and_transform(
     X_test: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, ColumnTransformer]:
     """
-    Fit preprocessor on training data only, then transform val/test.
-    This avoids data leakage.
+    Executes the preprocessing logic safely to prevent data leakage.
+
+    The preprocessor is exclusively fitted to the `X_train` data, then applied
+    as a transformation to the validation and test sets. Feature names are explicitly
+    preserved and returned as DataFrames instead of raw numpy arrays.
+
+    Args:
+        X_train (pd.DataFrame): The training feature matrix (used for fitting).
+        X_val (pd.DataFrame): The validation feature matrix.
+        X_test (pd.DataFrame): The testing feature matrix.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, ColumnTransformer]: The three processed
+            dataframes accompanied by the fitted ColumnTransformer object.
     """
     preprocessor = build_preprocessor(X_train)
 
@@ -156,6 +193,15 @@ def preprocess_and_transform(
 
 
 def get_feature_names(preprocessor: ColumnTransformer) -> list[str]:
+    """
+    Extracts the updated column names from a fitted ColumnTransformer (crucial for One-Hot Encoded variables).
+
+    Args:
+        preprocessor (ColumnTransformer): The fitted preprocessor.
+
+    Returns:
+        list[str]: A list of the output column names corresponding to the transformed array.
+    """
     feature_names: list[str] = []
     for name, transformer, columns in preprocessor.transformers_:
         if name == "remainder":
@@ -174,9 +220,6 @@ def get_feature_names(preprocessor: ColumnTransformer) -> list[str]:
     return feature_names
 
 
-BASE_DIR = Path().resolve().parent
-
-
 def save_processed_data(
     X_train: pd.DataFrame,
     X_val: pd.DataFrame,
@@ -185,11 +228,23 @@ def save_processed_data(
     y_val: pd.Series,
     y_test: pd.Series,
     preprocessor: ColumnTransformer,
-    output_dir: str,
-    pipeline_path: str,
+    output_dir: str | Path,
+    pipeline_path: str | Path,
 ) -> None:
     """
-    Save processed datasets and fitted preprocessing pipeline.
+    Bundles the processed arrays, targets, and the fitted pipeline into a single tuple
+    and saves it to the disk as a .pkl file for downstream training consumption.
+
+    Args:
+        X_train (pd.DataFrame): Transformed training features.
+        X_val (pd.DataFrame): Transformed validation features.
+        X_test (pd.DataFrame): Transformed testing features.
+        y_train (pd.Series): Training labels.
+        y_val (pd.Series): Validation labels.
+        y_test (pd.Series): Testing labels.
+        preprocessor (ColumnTransformer): The fitted preprocessing pipeline.
+        output_dir (str | Path): Base directory for saving.
+        pipeline_path (str | Path): Explicit path for the resulting .pkl file.
     """
     output_dir = Path(output_dir)
     pipeline_path = Path(pipeline_path)
@@ -209,15 +264,25 @@ def run_preprocessing(
     random_state: int = 42,
     save: bool = True,
     path: str | Path = BASE_DIR / "data" / "processed",
-    name: str = None,
+    name: Optional[str] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     """
-    Full preprocessing pipeline:
-    1. filter out drop_columns
-    2. split data
-    3. fit preprocessing on train only
-    4. transform val/test
-    5. optionally save outputs
+    Executes the comprehensive data preprocessing lifecycle sequentially:
+    filtering target columns, splitting data, fitting the pipeline, transforming arrays,
+    and saving the serialized artifacts to the disk.
+
+    Args:
+        df (pd.DataFrame): The raw combined dataframe.
+        target_column (str, optional): Label column. Defaults to TARGET_COLUMN.
+        drop_columns (Optional[list[str]], optional): Columns to exclude prior to splitting. Defaults to None.
+        random_state (int, optional): Seed for split shuffles. Defaults to 42.
+        save (bool, optional): Whether to write outputs to disk. Defaults to True.
+        path (str | Path, optional): Output save directory. Defaults to BASE_DIR / "data" / "processed".
+        name (Optional[str], optional): Filename prefix for the saved artifact. Defaults to None.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]: The
+            six core DataFrames and Series arrays ready for machine learning model ingestion.
     """
     if drop_columns is None:
         drop_columns = ["X2", "X3", "X4"]
@@ -251,7 +316,9 @@ def run_preprocessing(
             split.y_test,
             preprocessor,
             output_dir=path,
-            pipeline_path=path / f"{name}.pkl" if name else path / "preprocessor.pkl",
+            pipeline_path=(
+                Path(path) / f"{name}.pkl" if name else Path(path) / "preprocessor.pkl"
+            ),
         )
 
     return (
