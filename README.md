@@ -31,8 +31,8 @@ payment pressure).
 
 ```text
 ├── data/                        
-│   ├── raw/                    # Raw downloaded data (data.xls)
-│   └── processed/              # Processed ML-ready data (3, 18, and 44 features)
+│   ├── processed/              # Processed ML-ready data (3, 18, and 44 features)
+│   └── raw/                    # Raw downloaded data (data.xls)
 ├── models/                     # Trained model checkpoints (.pkl files)
 ├── notebooks/                  # Jupyter Notebook templates
 │   ├── compare.ipynb           # Evaluates model performance using Nested CV
