@@ -131,29 +131,9 @@ if [[ "${RUN_EVAL,,}" == "y" ]]; then
     else
         echo " -> Warning: notebooks/compare.ipynb not found."
     fi
-    if [[ -f "src/shap_analysis.py" ]]; then
-        echo "   -> Generating SHAP Explainability plots..."
-        python src/shap_analysis.py
-    fi
-    if [[ -f "src/calibration_analysis.py" ]]; then
-        echo "   -> Generating Calibration Curves..."
-        python src/calibration_analysis.py
-    fi
-fi
-echo ""
-
-# ---------------------------------------------------------
-# 7. Fairness Analysis
-# ---------------------------------------------------------
-read -p "7. Do you want to run fairness analysis? (Y/N by default): " RUN_FAIRNESS
-
-if [[ "${RUN_FAIRNESS,,}" == "y" ]]; then
-    echo " -> Running fairness analysis..."
-
-    if [[ -f "src/fairness_analysis.py" ]]; then
+        if [[ -f "src/fairness_analysis.py" ]]; then
+        echo " -> Running fairness analysis..."
         python3 src/fairness_analysis.py
-    else
-        echo " -> Warning: src/fairness_analysis.py not found."
     fi
 
     if [[ -f "notebooks/fairness.ipynb" ]]; then
@@ -170,13 +150,22 @@ if [[ "${RUN_FAIRNESS,,}" == "y" ]]; then
     else
         echo " -> Warning: notebooks/fairness.ipynb not found."
     fi
+
+    if [[ -f "src/shap_analysis.py" ]]; then
+        echo "   -> Generating SHAP Explainability plots..."
+        python src/shap_analysis.py
+    fi
+    if [[ -f "src/calibration_analysis.py" ]]; then
+        echo "   -> Generating Calibration Curves..."
+        python src/calibration_analysis.py
+    fi
 fi
 echo ""
 
 # ---------------------------------------------------------
-# 8. Launch Demo App
+# 7. Launch Demo App
 # ---------------------------------------------------------
-read -p "8. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
+read -p "7. Do you want to launch the demo app? (Y/N by default): " LAUNCH_APP
 
 if [[ "${LAUNCH_APP,,}" == "y" ]]; then
     echo " -> Launching Streamlit app..."

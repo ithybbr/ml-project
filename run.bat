@@ -132,31 +132,10 @@ if /I "!RUN_EVAL!"=="Y" (
     ) else (
         echo  -^> Warning: notebooks\compare.ipynb not found.
     )
-    if exist "src\shap_analysis.py" (
-        echo "   -> Generating SHAP Explainability plots..."
-        python src/shap_analysis.py
-    )
-    if exist "src\calibration_analysis.py" (
-        echo "   -> Generating Calibration Curves..."
-        python src/calibration_analysis.py
-    )
-)
-echo.
-
-:: ---------------------------------------------------------
-:: 7. Fairness Analysis
-:: ---------------------------------------------------------
-set /p RUN_FAIRNESS="7. Do you want to run fairness analysis? (Y/N by default): "
-
-if /I "!RUN_FAIRNESS!"=="Y" (
-    echo  -^> Running fairness analysis...
-
     if exist "src\fairness_analysis.py" (
+        echo  -^> Running fairness analysis...
         python src/fairness_analysis.py
-    ) else (
-        echo  -^> Warning: src\fairness_analysis.py not found.
     )
-
     if exist "notebooks\fairness.ipynb" (
         cd notebooks
 
@@ -168,16 +147,22 @@ if /I "!RUN_FAIRNESS!"=="Y" (
 
         cd ..
         echo  -^> Fairness analysis complete.
-    ) else (
-        echo  -^> Warning: notebooks\fairness.ipynb not found.
+    )
+    if exist "src\shap_analysis.py" (
+        echo  -^> Generating SHAP Explainability plots...
+        python src/shap_analysis.py
+    )
+    if exist "src\calibration_analysis.py" (
+        echo  -^> Generating Calibration Curves...
+        python src/calibration_analysis.py
     )
 )
 echo.
 
 :: ---------------------------------------------------------
-:: 8. Launch Demo App
+:: 7. Launch Demo App
 :: ---------------------------------------------------------
-set /p LAUNCH_APP="8. Do you want to launch the demo app? (Y/N by default): "
+set /p LAUNCH_APP="7. Do you want to launch the demo app? (Y/N by default): "
 
 if /I "!LAUNCH_APP!"=="Y" (
     echo  -^> Launching Streamlit app...
