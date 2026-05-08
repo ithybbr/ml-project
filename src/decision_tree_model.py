@@ -82,7 +82,7 @@ def main() -> None:
     n_features = [3, 18, 44]
     for n in n_features:
         dataset_path = Path(f"data/processed/{n}features.pkl")
-        output_model_path = Path(f"models/decision_tree_model_{n}features.pkl")
+        output_model_path = Path(f"models/decision_tree_{n}features.pkl")
 
         if not dataset_path.exists():
             raise FileNotFoundError(f"Dataset not found at {dataset_path}. Please check the path.")
