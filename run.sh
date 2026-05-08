@@ -131,6 +131,14 @@ if [[ "${RUN_EVAL,,}" == "y" ]]; then
     else
         echo " -> Warning: notebooks/compare.ipynb not found."
     fi
+    if [[ -f "src/shap_analysis.py" ]]; then
+        echo "   -> Generating SHAP Explainability plots..."
+        python src/shap_analysis.py
+    fi
+    if [[ -f "src/calibration_analysis.py" ]]; then
+        echo "   -> Generating Calibration Curves..."
+        python src/calibration_analysis.py
+    fi
 fi
 echo ""
 

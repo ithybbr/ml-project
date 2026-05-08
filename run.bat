@@ -132,6 +132,14 @@ if /I "!RUN_EVAL!"=="Y" (
     ) else (
         echo  -^> Warning: notebooks\compare.ipynb not found.
     )
+    if exist "src\shap_analysis.py" (
+        echo "   -> Generating SHAP Explainability plots..."
+        python src/shap_analysis.py
+    )
+    if exist "src\calibration_analysis.py" (
+        echo "   -> Generating Calibration Curves..."
+        python src/calibration_analysis.py
+    )
 )
 echo.
 
