@@ -2,7 +2,7 @@
 
 A complete end-to-end Machine Learning pipeline and interactive web application for predicting
 credit card default risk. This project automates everything from raw data ingestion and
-advanced feature engineering to model training, evaluation, and deployment via Streamlit.
+advanced feature engineering to model training, evaluation, fairness analysis, and deployment via Streamlit.
 
 ---
 
@@ -13,6 +13,7 @@ advanced feature engineering to model training, evaluation, and deployment via S
 - [Quickstart Guide](#-quickstart-guide)
 - [Features & Pipeline Steps](#%EF%B8%8F-features--pipeline-steps)
 - [Machine Learning Models](#-machine-learning-models)
+- [Fairness Analysis](#%EF%B8%8F-fairness-analysis)
 - [Interactive Web App](#%EF%B8%8F-interactive-web-app)
 
 ---
@@ -23,7 +24,8 @@ This system uses historical financial behavior (repayment status, bill amounts, 
 and demographic data to assess the likelihood of a customer defaulting on their credit card
 next month. It features an automated data pipeline that expands a baseline of 18 features
 into 44 highly predictive engineered features (e.g., delinquency trends, utilization ratios,
-payment pressure).
+payment pressure). The project also includes a fairness analysis pipeline for evaluating demographic disparities
+across different machine learning models.
 
 ---
 
@@ -37,6 +39,7 @@ payment pressure).
 ├── notebooks/                  # Jupyter Notebook templates
 │   ├── compare.ipynb           # Evaluates model performance using Nested CV
 │   ├── eda.ipynb               # Data exploration
+│   ├── fairness.ipynb          # Fairness analysis visualizations
 │   └── preprocess.ipynb        # Creates train/test splits and saves .pkl
 ├── results/                    # Evaluation results
 │   ├── 3features/              # Results for 3 feature dataset
@@ -48,6 +51,7 @@ payment pressure).
 │   ├── data_loader.py          # Used to load .xls files
 │   ├── download_data.py        # Fetches raw dataset from UCI repo
 │   ├── engineered_features.py  # Generates the 44-feature dataset
+│   ├── fairness_analysis.py    # Demographic fairness evaluation
 │   ├── preprocessing.py        # Scaling, imputation, and One-Hot Encoding
 │   └── *_model.py              # Training scripts for various ML architectures
 ├── tests/                      # Minimal unit tests
@@ -109,6 +113,7 @@ The pipeline is managed interactively and includes the following capabilities:
 
 4. **Model Training:** Executes scripts in `src/` to train models on the processed data arrays.
 5. **Evaluation:** Uses `papermill` to run nested cross-validation and output dynamic evaluation notebooks without overwriting your templates.
+6. **Fairness Analysis:** Runs demographic fairness evaluation across SEX, EDUCATION, and MARRIAGE groups and generates fairness visualizations and CSV reports.
 
 ---
 
@@ -125,6 +130,42 @@ The system is configured to train and evaluate multiple model architectures to f
 * **K-Nearest Neighbors (KNN)**
 
 *Checkpoints are saved dynamically in the `models/` directory matching the format `[model_name]_[n]features.pkl`.*
+
+---
+
+## ⚖️ Fairness Analysis
+
+The project includes a fairness evaluation pipeline implemented in:
+
+```bash
+src/fairness_analysis.py
+```
+
+and visualized through:
+
+```bash
+notebooks/fairness.ipynb
+```
+
+The fairness system evaluates demographic subgroup performance across:
+
+* SEX
+* EDUCATION
+* MARRIAGE
+
+Generated outputs include:
+
+* Approval rate comparisons
+* Recall comparisons
+* False Negative Rate (FNR) comparisons
+* CSV subgroup reports
+* Disparity summaries
+
+Results are automatically saved to:
+
+```bash
+results/fairness/
+```
 
 ---
 
