@@ -15,7 +15,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 TARGET_COLUMN = "Y"
-DROP_COLUMNS = ["X2", "X3", "X4"]
 
 
 @dataclass
@@ -41,12 +40,6 @@ def split_data(
     """
     if target_column not in df.columns:
         raise ValueError(f"Target column '{target_column}' not found in dataframe.")
-
-    df = df.copy()
-
-    for col in DROP_COLUMNS:
-        if col in df.columns:
-            df = df.drop(columns=col)
 
     X = df.drop(columns=target_column)
     y = df[target_column]
@@ -176,8 +169,8 @@ def save_processed_data(
     y_val: pd.Series,
     y_test: pd.Series,
     preprocessor: ColumnTransformer,
-    output_dir: str | Path = BASE_DIR / "data" / "processed",
-    pipeline_path: str | Path = BASE_DIR / "data" / "processed" / "44features.pkl",
+    output_dir: str,
+    pipeline_path: str,
 ) -> None:
     """
     Save processed datasets and fitted preprocessing pipeline.
@@ -194,16 +187,30 @@ def save_processed_data(
 def run_preprocessing(
     df: pd.DataFrame,
     target_column: str = TARGET_COLUMN,
+    drop_columns: Optional[list[str]] = None,
     random_state: int = 42,
     save: bool = True,
+    path: str | Path = BASE_DIR / "data" / "processed",
+    name: str = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     """
     Full preprocessing pipeline:
-    1. split data
-    2. fit preprocessing on train only
-    3. transform val/test
-    4. optionally save outputs
+    1. filter out drop_columns
+    2. split data
+    3. fit preprocessing on train only
+    4. transform val/test
+    5. optionally save outputs
     """
+    if drop_columns is None:
+        drop_columns = ["X2", "X3", "X4"]
+        
+    df = df.copy()
+    
+    # Drop specified columns before splitting
+    for col in drop_columns:
+        if col in df.columns:
+            df = df.drop(columns=col)
+            
     split = split_data(
         df=df,
         target_column=target_column,
@@ -225,6 +232,8 @@ def run_preprocessing(
             split.y_val,
             split.y_test,
             preprocessor,
+            output_dir=path,
+            pipeline_path=path / f"{name}.pkl" if name else path / "preprocessor.pkl",
         )
 
     return (

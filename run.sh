@@ -8,7 +8,7 @@ echo ""
 # ---------------------------------------------------------
 # 1. Virtual Environment & Dependencies
 # ---------------------------------------------------------
-read -p "1. Do you want to use a virtual environment (.venv)? (Y/N): " USE_VENV
+read -p "1. Do you want to use a virtual environment (.venv)? (NOTE: This will create a new virtual environment, SKIP if you are already using one) (Y/N): " USE_VENV
 
 if [[ "${USE_VENV,,}" == "y" ]]; then
     if [[ ! -d ".venv" ]]; then
@@ -24,13 +24,13 @@ if [[ "${USE_VENV,,}" == "y" ]]; then
     if [[ -f "requirements.txt" ]]; then
         echo " -> Installing dependencies in .venv..."
         python3 -m pip install --upgrade pip -q
-        python3 -m pip install -r requirements.txt -q
+        python3 -m pip install -r requirements.txt
     else
         echo " -> Warning: requirements.txt not found. Skipping pip install."
     fi
 else
     if [[ -f "requirements.txt" ]]; then
-        echo " -> Installing dependencies in current global environment..."
+        echo " -> Installing dependencies in current environment..."
         python3 -m pip install --upgrade pip -q
         python3 -m pip install -r requirements.txt -q
     else
@@ -40,9 +40,59 @@ fi
 echo ""
 
 # ---------------------------------------------------------
-# 2. Train Models
+# 2. Download Raw Dataset
 # ---------------------------------------------------------
-read -p "2. Do you want to train the models? (WARNING: it is very slow)(Y/N): " TRAIN_MODELS
+read -p "2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N): " DOWNLOAD_DATA
+
+if [[ "${DOWNLOAD_DATA,,}" == "y" ]]; then
+    echo " -> Running data download script..."
+    python3 src/download_data.py
+fi
+echo ""
+
+# ---------------------------------------------------------
+# 3. Create Data Split
+# ---------------------------------------------------------
+read -p "3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N): " CREATE_SPLIT
+
+if [[ "${CREATE_SPLIT,,}" == "y" ]]; then
+    if [[ -f "notebooks/preprocess.ipynb" ]]; then
+        cd notebooks || exit
+
+        echo "   -> Executing preprocess.ipynb"
+        papermill "preprocess.ipynb" "preprocess_executed.ipynb"
+        
+        echo "   -> Cleaning up executed notebook..."
+        rm "preprocess_executed.ipynb"
+
+        cd ..
+        echo " -> Preprocessing and data split creation complete."
+    else
+        echo " -> Warning: notebooks/preprocess.ipynb not found."
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------
+# 4. Delete Raw Dataset
+# ---------------------------------------------------------
+read -p "4. Do you want to delete the raw dataset? (Y/N): " DELETE_DATA
+
+if [[ "${DELETE_DATA,,}" == "y" ]]; then
+    echo " -> Deleting the raw dataset file..."
+    if [[ -f "data/raw/data.xls" ]]; then
+        rm "data/raw/data.xls"
+        echo " -> Successfully deleted data/raw/data.xls"
+    else
+        echo " -> Warning: data/raw/data.xls not found."
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------
+# 5. Train Models
+# ---------------------------------------------------------
+read -p "5. Do you want to train the models? (WARNING: it is very slow)(Y/N): " TRAIN_MODELS
 
 if [[ "${TRAIN_MODELS,,}" == "y" ]]; then
     echo " -> Scanning 'src' directory for model scripts..."
@@ -59,19 +109,22 @@ fi
 echo ""
 
 # ---------------------------------------------------------
-# 3. Evaluation Results
+# 6. Evaluation Results
 # ---------------------------------------------------------
-read -p "3. Do you want to create evaluation results? (Y/N): " RUN_EVAL
+read -p "6. Do you want to create evaluation results? (Y/N): " RUN_EVAL
 
 if [[ "${RUN_EVAL,,}" == "y" ]]; then
     echo " -> Generating evaluation results..."
     if [[ -f "notebooks/compare.ipynb" ]]; then
         cd notebooks || exit
         
-        # Use dynamic output names to prevent overwriting
         for f in 3 18 44; do
             echo "   -> Executing compare.ipynb for $f features..."
             papermill "compare.ipynb" "compare_${f}_features.ipynb" -p d "$f"
+            
+            # Delete the specific evaluation notebook right after it finishes
+            echo "   -> Cleaning up executed evaluation notebook..."
+            rm "compare_${f}_features.ipynb"
         done
         cd ..
         echo " -> Evaluation complete."
@@ -82,9 +135,9 @@ fi
 echo ""
 
 # ---------------------------------------------------------
-# 4. Launch Demo App
+# 7. Launch Demo App
 # ---------------------------------------------------------
-read -p "4. Do you want to launch the demo app? (Y/N): " LAUNCH_APP
+read -p "7. Do you want to launch the demo app? (Y/N): " LAUNCH_APP
 
 if [[ "${LAUNCH_APP,,}" == "y" ]]; then
     echo " -> Launching Streamlit app..."

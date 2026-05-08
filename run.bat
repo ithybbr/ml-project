@@ -9,7 +9,7 @@ echo.
 :: ---------------------------------------------------------
 :: 1. Virtual Environment & Dependencies
 :: ---------------------------------------------------------
-set /p USE_VENV="1. Do you want to use a virtual environment (.venv)? (Y/N): "
+set /p USE_VENV="1. Do you want to use a virtual environment (.venv)? (NOTE: This will create a new virtual environment, SKIP if you are already using one) (Y/N): "
 
 if /I "!USE_VENV!"=="Y" (
     if not exist ".venv\" (
@@ -41,9 +41,59 @@ if /I "!USE_VENV!"=="Y" (
 echo.
 
 :: ---------------------------------------------------------
-:: 2. Train Models
+:: 2. Download Raw Dataset
 :: ---------------------------------------------------------
-set /p TRAIN_MODELS="2. Do you want to train the models? (WARNING: it is very slow)(Y/N): "
+set /p DOWNLOAD_DATA="2. Do you want to download the raw dataset? (NOTE: It is not needed if you don't want to preprocess and create data splits) (Y/N): "
+
+if /I "!DOWNLOAD_DATA!"=="Y" (
+    echo  -^> Running data download script...
+    python src/download_data.py
+)
+echo.
+
+:: ---------------------------------------------------------
+:: 3. Create Data Split
+:: ---------------------------------------------------------
+set /p CREATE_SPLIT="3. Do you want to preprocess raw dataset and create data splits? (NOTE: The repository already contains preprocessed data) (Y/N): "
+
+if /I "!CREATE_SPLIT!"=="Y" (
+    if exist "notebooks\preprocess.ipynb" (
+        cd notebooks
+
+        echo    -^> Executing preprocess.ipynb
+        papermill "preprocess.ipynb" "preprocess_executed.ipynb"
+        
+        echo    -^> Cleaning up executed notebook...
+        del "preprocess_executed.ipynb"
+
+        cd ..
+        echo  -^> Preprocessing and data split creation complete.
+    ) else (
+        echo  -^> Warning: notebooks\preprocess.ipynb not found.
+    )
+)
+echo.
+
+:: ---------------------------------------------------------
+:: 4. Delete Raw Dataset
+:: ---------------------------------------------------------
+set /p DELETE_DATA="4. Do you want to delete the raw dataset? (Y/N): "
+
+if /I "!DELETE_DATA!"=="Y" (
+    echo  -^> Deleting the raw dataset file...
+    if exist "data\raw\data.xls" (
+        del "data\raw\data.xls"
+        echo  -^> Successfully deleted data\raw\data.xls
+    ) else (
+        echo  -^> Warning: data\raw\data.xls not found.
+    )
+)
+echo.
+
+:: ---------------------------------------------------------
+:: 5. Train Models
+:: ---------------------------------------------------------
+set /p TRAIN_MODELS="5. Do you want to train the models? (WARNING: it is very slow)(Y/N): "
 
 if /I "!TRAIN_MODELS!"=="Y" (
     echo  -^> Scanning 'src' directory for model scripts...
@@ -60,19 +110,22 @@ if /I "!TRAIN_MODELS!"=="Y" (
 echo.
 
 :: ---------------------------------------------------------
-:: 3. Evaluation Results
+:: 6. Evaluation Results
 :: ---------------------------------------------------------
-set /p RUN_EVAL="3. Do you want to create evaluation results? (Y/N): "
+set /p RUN_EVAL="6. Do you want to create evaluation results? (Y/N): "
 
 if /I "!RUN_EVAL!"=="Y" (
     echo  -^> Generating evaluation results...
     if exist "notebooks\compare.ipynb" (
         cd notebooks
         
-        :: Using your original papermill loop to evaluate all 3 dataset sizes
         for %%f in (3 18 44) do (
             echo    -^> Executing compare.ipynb for %%f features...
-            papermill "compare.ipynb" "compare.ipynb" -p d %%f
+            papermill "compare.ipynb" "compare_%%f_features.ipynb" -p d %%f
+            
+            :: NEW: Delete the specific evaluation notebook right after it finishes
+            echo    -^> Cleaning up executed evaluation notebook...
+            del "compare_%%f_features.ipynb"
         )
         cd ..
         echo  -^> Evaluation complete.
@@ -83,9 +136,9 @@ if /I "!RUN_EVAL!"=="Y" (
 echo.
 
 :: ---------------------------------------------------------
-:: 4. Launch Demo App
+:: 7. Launch Demo App
 :: ---------------------------------------------------------
-set /p LAUNCH_APP="4. Do you want to launch the demo app? (Y/N): "
+set /p LAUNCH_APP="7. Do you want to launch the demo app? (Y/N): "
 
 if /I "!LAUNCH_APP!"=="Y" (
     echo  -^> Launching Streamlit app...
